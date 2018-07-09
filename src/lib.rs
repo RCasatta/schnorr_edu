@@ -13,12 +13,9 @@ use num_integer::Integer;
 use std::str::FromStr;
 use crypto::sha2::Sha256;
 use crypto::digest::Digest;
-use rand::prelude::*;
 use std::fmt;
 
-
-
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Point {
     x: BigUint,
     y: BigUint,
@@ -60,7 +57,7 @@ impl Default for Context {
     }
 }
 
-pub fn point_mul(mut p: Option<Point>, mut n : BigUint, context : &Context) -> Option<Point> {  //TODO borrow parameters
+pub fn point_mul(mut p: Option<Point>, mut n : BigUint, context : &Context) -> Option<Point> {
     let mut r : Option<Point> = None;
 
     loop {
@@ -77,7 +74,7 @@ pub fn point_mul(mut p: Option<Point>, mut n : BigUint, context : &Context) -> O
     }
 }
 
-fn point_add(p1 : Option<Point>, p2 : Option<Point>, context : &Context) -> Option<Point> {
+fn point_add(p1 : Option<Point>, p2 : Option<Point>, context : &Context) -> Option<Point> { //TODO borrow parameters
     match (p1,p2) {
         (None, None) => None,
         (Some(p1), None) => Some(p1),
@@ -86,7 +83,7 @@ fn point_add(p1 : Option<Point>, p2 : Option<Point>, context : &Context) -> Opti
             if  p1.x == p2.x && p1.y != p2.y {
                 return None;
             }
-            let lam = if  p1.x == p2.x && p1.y == p2.y { // TODO impl eq on Point
+            let lam = if  p1 == p2 {
                 // lam = (3 * p1[0] * p1[0] * pow(2 * p1[1], p - 2, p)) % p
                 let mut res = context.three.clone();
                 res.mul_assign(&p1.x);
@@ -97,8 +94,8 @@ fn point_add(p1 : Option<Point>, p2 : Option<Point>, context : &Context) -> Opti
                 res
             } else {
                 // lam = ((p2[1] - p1[1]) * pow(p2[0] - p1[0], p - 2, p)) % p
-                let mut res = finite_sub( p2.y.clone(), p1.y.clone(), context );
-                let sub = finite_sub( p2.x.clone(), p1.x.clone(), context);
+                let mut res = finite_sub( p2.y.clone(), p1.y.clone(), context.p.clone() );
+                let sub = finite_sub( p2.x.clone(), p1.x.clone(), context.p.clone());
                 let pow = sub.modpow(&context.p_sub2, &context.p);
                 res.mul_assign(pow);
                 res.rem_assign(&context.p);
@@ -114,7 +111,7 @@ fn point_add(p1 : Option<Point>, p2 : Option<Point>, context : &Context) -> Opti
                 x.add_assign(&context.p);
             }
             //(x3, (lam * (p1[0] - x3) - p1[1]) % p)
-            let sub = finite_sub(p1.x.clone(), x.clone(), context);
+            let sub = finite_sub(p1.x.clone(), x.clone(), context.p.clone());
             let mut y = lam.mul(sub);
             y.sub_assign(p1.y);
             y.rem_assign(&context.p);
@@ -126,11 +123,11 @@ fn point_add(p1 : Option<Point>, p2 : Option<Point>, context : &Context) -> Opti
     }
 }
 
-fn finite_sub(a : BigUint, b : BigUint, context : &Context) -> BigUint{
+fn finite_sub(a : BigUint, b : BigUint, p_or_n : BigUint) -> BigUint{
     if a > b {
         a.sub(b)
     } else {
-        a.add(context.p.clone()).sub(b)
+        a.add(p_or_n.clone()).sub(b)
     }
 }
 
@@ -142,7 +139,7 @@ pub fn schnorr_sign(msg : &[u8], sec_key: &[u8], context : &Context) -> Vec<u8> 
     let mut k = sha256(&arg[..]);
     let R = point_mul(Some(context.G.clone()), k.clone(), context).unwrap();
     if !jacobi(&R.y, context).is_one() {
-        k = context.n.clone().sub(k);  //TODO should check negative?
+        k = finite_sub(context.n.clone(), k.clone(), context.n.clone());
     }
 
     let sec_key = BigUint::from_bytes_be(sec_key);
@@ -224,8 +221,7 @@ fn to_32_bytes(val : &BigUint) -> [u8;32] {
 
 impl fmt::Display for Point {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "({}, {})", self.x, self.y);
-        Ok(())
+        write!(f, "({}, {})", self.x, self.y)
     }
 }
 
@@ -234,7 +230,7 @@ impl Point {
     pub fn on_curve(&self, context : &Context) -> bool {
         let pow1 = self.y.modpow(&context.two, &context.p);
         let pow2 = self.x.modpow(&context.three, &context.p);
-        let sub = finite_sub(pow1, pow2, &context);
+        let sub = finite_sub(pow1, pow2, context.p.clone());
 
         sub.rem(&context.p) == context.seven
     }
@@ -305,6 +301,7 @@ mod tests {
     }
 
 
+
     #[test]
     fn test_point() {
         let context = Context::default();
@@ -314,17 +311,16 @@ mod tests {
 
         assert!(context.G.on_curve(&context));
 
-        let G_deserialized = Point::from_bytes(&x_bytes, &context).unwrap();
-        assert_eq!(&context.G.x, &G_deserialized.x);
-        assert_eq!(&context.G.y, &G_deserialized.y);
+        let g_deserialized = Point::from_bytes(&x_bytes, &context).unwrap();
+        assert_eq!(&context.G.x, &g_deserialized.x);
+        assert_eq!(&context.G.y, &g_deserialized.y);
     }
 
     #[test]
     fn test_sign_and_verify() {
         let context = Context::default();
-        let mut rng = thread_rng();
         let msg = [0u8;32];
-        let mut sec_key = [1u8;32];
+        let sec_key = [1u8;32];
         //sec_key[31]=1;
         let sec_key_int = BigUint::from_bytes_be(&sec_key);
         let pub_key = point_mul(Some(context.G.clone()), sec_key_int, &context) .unwrap().as_bytes();
