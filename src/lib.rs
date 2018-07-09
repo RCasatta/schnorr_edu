@@ -74,7 +74,7 @@ pub fn point_mul(mut p: Option<Point>, mut n : BigUint, context : &Context) -> O
     }
 }
 
-fn point_add(p1 : &Option<Point>, p2 : &Option<Point>, context : &Context) -> Option<Point> {
+pub fn point_add(p1 : &Option<Point>, p2 : &Option<Point>, context : &Context) -> Option<Point> {
     match (p1,p2) {
         (None, None) => None,
         (Some(p1), None) => Some(p1.clone()),
@@ -107,7 +107,7 @@ fn point_add(p1 : &Option<Point>, p2 : &Option<Point>, context : &Context) -> Op
     }
 }
 
-fn finite_sub(a : BigUint, b : &BigUint, p_or_n : &BigUint) -> BigUint{
+pub fn finite_sub(a : BigUint, b : &BigUint, p_or_n : &BigUint) -> BigUint{
     if a > *b {
         a.sub(b)
     } else {
