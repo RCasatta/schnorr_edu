@@ -89,28 +89,29 @@ fn point_add(p1 : &Option<Point>, p2 : &Option<Point>, context : &Context) -> Op
                 context.three.clone().mul(&p1.x).rem(&context.p).mul(&p1.x).rem(&context.p).mul(&pow).rem(&context.p)
             } else {
                 // lam = ((p2[1] - p1[1]) * pow(p2[0] - p1[0], p - 2, p)) % p
-                let pow = finite_sub( p2.x.clone(), p1.x.clone(), context.p.clone()).modpow(&context.p_sub2, &context.p);
-                finite_sub( p2.y.clone(), p1.y.clone(), context.p.clone() ).mul(pow).rem(&context.p)
+                let pow = finite_sub( p2.x.clone(), &p1.x, &context.p).modpow(&context.p_sub2, &context.p);
+                finite_sub( p2.y.clone(), &p1.y, &context.p ).mul(pow).rem(&context.p)
             };
             // x3 = (lam * lam - p1[0] - p2[0]) % p
-            let x3 = lam.clone().modpow(&context.two, &context.p);
-            let x3 = finite_sub(x3,p1.x.clone(),context.p.clone());
-            let x3 = finite_sub(x3,p2.x.clone(),context.p.clone());
+            let x3 = lam.modpow(&context.two, &context.p);
+            let x3 = finite_sub(x3,&p1.x,&context.p);
+            let x3 = finite_sub(x3,&p2.x,&context.p);
 
             //(x3, (lam * (p1[0] - x3) - p1[1]) % p)
-            let sub = finite_sub(p1.x.clone(), x3.clone(), context.p.clone());
-            let mut y3 = lam.mul(sub).sub(&p1.y).rem(&context.p);  // check neg
+            let sub = finite_sub(p1.x.clone(), &x3, &context.p);
+            let y3 = lam.mul(sub);
+            let y3 = finite_sub(y3, &p1.y, &context.p).rem(&context.p);
 
             Some(Point{x:x3,y:y3})
         }
     }
 }
 
-fn finite_sub(a : BigUint, b : BigUint, p_or_n : BigUint) -> BigUint{
-    if a > b {
+fn finite_sub(a : BigUint, b : &BigUint, p_or_n : &BigUint) -> BigUint{
+    if a > *b {
         a.sub(b)
     } else {
-        finite_sub(a.add(p_or_n.clone()), b, p_or_n)
+        finite_sub(a.add(p_or_n), b, p_or_n)
     }
 }
 
@@ -122,7 +123,7 @@ pub fn schnorr_sign(msg : &[u8], sec_key: &[u8], context : &Context) -> Vec<u8> 
     let mut k = sha256(&arg[..]);
     let R = point_mul(Some(context.G.clone()), k.clone(), context).unwrap();
     if !jacobi(&R.y, context).is_one() {
-        k = finite_sub(context.n.clone(), k.clone(), context.n.clone());
+        k = finite_sub(context.n.clone(), &k, &context.n);
     }
 
     let sec_key = BigUint::from_bytes_be(sec_key);
@@ -213,7 +214,7 @@ impl Point {
     pub fn on_curve(&self, context : &Context) -> bool {
         let pow1 = self.y.modpow(&context.two, &context.p);
         let pow2 = self.x.modpow(&context.three, &context.p);
-        let sub = finite_sub(pow1, pow2, context.p.clone());
+        let sub = finite_sub(pow1, &pow2, &context.p);
 
         sub.rem(&context.p) == context.seven
     }
