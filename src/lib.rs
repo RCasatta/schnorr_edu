@@ -64,9 +64,9 @@ pub fn point_mul(mut p: Option<Point>, mut n : BigUint, context : &Context) -> O
         let (ris, rem) = n.div_rem(&context.two);
 
         if rem.is_one() {
-            r = point_add(r.clone(),p.clone(), context);
+            r = point_add(&r,&p, context);
         }
-        p = point_add(p.clone(),p.clone(), context);
+        p = point_add(&p,&p, context);
         n = ris.clone();
         if ris.is_zero() {
             return r;
@@ -74,11 +74,11 @@ pub fn point_mul(mut p: Option<Point>, mut n : BigUint, context : &Context) -> O
     }
 }
 
-fn point_add(p1 : Option<Point>, p2 : Option<Point>, context : &Context) -> Option<Point> { //TODO borrow parameters
+fn point_add(p1 : &Option<Point>, p2 : &Option<Point>, context : &Context) -> Option<Point> { //TODO borrow parameters
     match (p1,p2) {
         (None, None) => None,
-        (Some(p1), None) => Some(p1),
-        (None, Some(p2)) => Some(p2),
+        (Some(p1), None) => Some(p1.clone()),
+        (None, Some(p2)) => Some(p2.clone()),
         (Some(p1), Some(p2)) => {
             if  p1.x == p2.x && p1.y != p2.y {
                 return None;
@@ -113,7 +113,7 @@ fn point_add(p1 : Option<Point>, p2 : Option<Point>, context : &Context) -> Opti
             //(x3, (lam * (p1[0] - x3) - p1[1]) % p)
             let sub = finite_sub(p1.x.clone(), x.clone(), context.p.clone());
             let mut y = lam.mul(sub);
-            y.sub_assign(p1.y);
+            y.sub_assign(&p1.y);
             y.rem_assign(&context.p);
             if y < BigUint::zero() {
                 y.add_assign(&context.p);
@@ -178,7 +178,7 @@ pub fn schnorr_verify(msg : &[u8], pub_key_bytes: &[u8], signature: &[u8], conte
     let e = sha256(&arg);
     let a = point_mul(Some(context.G.clone()) , s , context);
     let b = point_mul(Some(pub_key) , context.n.clone().sub(e) , context);
-    let R = point_add(a,b, context);
+    let R = point_add(&a,&b, context);
 
     if R.is_none() {
         return false;
@@ -279,11 +279,11 @@ mod tests {
         assert_eq!("55066263022277343669578718895168534326250603453777594175500187360389116729240", format!("{}", context.G.x));
         assert_eq!("32670510020758816978083085130507043184471273380659243275938904335757337482424", format!("{}", context.G.y));
 
-        let g2 = point_add(Some(context.G.clone()), Some(context.G.clone()), &context).unwrap();
+        let g2 = point_add(&Some(context.G.clone()), &Some(context.G.clone()), &context).unwrap();
         assert_eq!("89565891926547004231252920425935692360644145829622209833684329913297188986597", format!("{}", g2.x));
         assert_eq!("12158399299693830322967808612713398636155367887041628176798871954788371653930", format!("{}", g2.y));
 
-        let g3 = point_add(Some(context.G.clone()), Some(g2.clone()), &context).unwrap();
+        let g3 = point_add(&Some(context.G.clone()), &Some(g2.clone()), &context).unwrap();
         assert_eq!("112711660439710606056748659173929673102114977341539408544630613555209775888121", format!("{}", g3.x));
         assert_eq!("25583027980570883691656905877401976406448868254816295069919888960541586679410", format!("{}", g3.y));
 
