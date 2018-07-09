@@ -4,7 +4,7 @@ This is an educational-only implementation of the proposed [Schnorr BIP](https:/
 
 * Non efficient
 * Non secure
-* Non costant time
+* Non constant time
 * A lot of heap allocation
 * A lot of avoidable copy of memory
 * Poor understanding of underlying math

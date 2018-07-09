@@ -3,6 +3,7 @@ extern crate num_bigint;
 extern crate num_traits;
 extern crate num_integer;
 extern crate data_encoding;
+extern crate rand;
 extern crate crypto;
 
 use std::ops::{Mul,MulAssign,Sub,RemAssign,AddAssign,SubAssign,Div,Rem,Add};
@@ -12,6 +13,10 @@ use num_integer::Integer;
 use std::str::FromStr;
 use crypto::sha2::Sha256;
 use crypto::digest::Digest;
+use rand::prelude::*;
+use std::fmt;
+
+
 
 #[derive(Clone)]
 pub struct Point {
@@ -29,7 +34,7 @@ pub struct Context {
     three: BigUint,
     seven: BigUint,
     n: BigUint,
-    G: Point,
+    pub G: Point,
 }
 
 impl Default for Context {
@@ -55,7 +60,7 @@ impl Default for Context {
     }
 }
 
-fn point_mul(mut p: Option<Point>, mut n : BigUint, context : &Context) -> Option<Point> {  //TODO borrow parameters
+pub fn point_mul(mut p: Option<Point>, mut n : BigUint, context : &Context) -> Option<Point> {  //TODO borrow parameters
     let mut r : Option<Point> = None;
 
     loop {
@@ -83,7 +88,7 @@ fn point_add(p1 : Option<Point>, p2 : Option<Point>, context : &Context) -> Opti
             }
             let lam = if  p1.x == p2.x && p1.y == p2.y { // TODO impl eq on Point
                 // lam = (3 * p1[0] * p1[0] * pow(2 * p1[1], p - 2, p)) % p
-                let mut res = BigUint::new(vec![3u32]);
+                let mut res = context.three.clone();
                 res.mul_assign(&p1.x);
                 res.mul_assign(&p1.x);
                 let pow = p1.y.clone().mul(2u32).modpow(&context.p_sub2, &context.p);
@@ -177,12 +182,17 @@ pub fn schnorr_verify(msg : &[u8], pub_key_bytes: &[u8], signature: &[u8], conte
     let a = point_mul(Some(context.G.clone()) , s , context);
     let b = point_mul(Some(pub_key) , context.n.clone().sub(e) , context);
     let R = point_add(a,b, context);
+
     if R.is_none() {
         return false;
     }
     let R = R.unwrap();
 
-    if !jacobi(&R.x, context).is_one() || R.x != r {
+    if R.x != r {
+        return false;
+    }
+
+    if !jacobi(&R.y, context).is_one() {
         return false
     }
 
@@ -212,16 +222,19 @@ fn to_32_bytes(val : &BigUint) -> [u8;32] {
     result
 }
 
+impl fmt::Display for Point {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "({}, {})", self.x, self.y);
+        Ok(())
+    }
+}
+
 impl Point {
 
     pub fn on_curve(&self, context : &Context) -> bool {
         let pow1 = self.y.modpow(&context.two, &context.p);
         let pow2 = self.x.modpow(&context.three, &context.p);
-
-        let mut sub = pow1.sub(pow2);
-        if sub < BigUint::zero() {
-            sub.add_assign(&context.p);
-        }
+        let sub = finite_sub(pow1, pow2, &context);
 
         sub.rem(&context.p) == context.seven
     }
@@ -304,6 +317,20 @@ mod tests {
         let G_deserialized = Point::from_bytes(&x_bytes, &context).unwrap();
         assert_eq!(&context.G.x, &G_deserialized.x);
         assert_eq!(&context.G.y, &G_deserialized.y);
+    }
+
+    #[test]
+    fn test_sign_and_verify() {
+        let context = Context::default();
+        let mut rng = thread_rng();
+        let msg = [0u8;32];
+        let mut sec_key = [1u8;32];
+        //sec_key[31]=1;
+        let sec_key_int = BigUint::from_bytes_be(&sec_key);
+        let pub_key = point_mul(Some(context.G.clone()), sec_key_int, &context) .unwrap().as_bytes();
+        let signature = schnorr_sign(&msg,&sec_key,&context);
+        let result = schnorr_verify(&msg, &pub_key, &signature, &context);
+        assert!(result);
     }
 
     #[test]

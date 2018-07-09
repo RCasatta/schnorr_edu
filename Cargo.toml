@@ -10,3 +10,11 @@ lazy_static = "1.0"
 num-integer = "0.1.39"
 data-encoding = "2.1.1"
 rust-crypto = "~0.2"
+rand = "0.5.3"
+
+[dev-dependencies]
+criterion = "0.2"
+
+[[bench]]
+name = "my_benchmark"
+harness = false
