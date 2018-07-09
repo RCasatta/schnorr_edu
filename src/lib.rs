@@ -6,7 +6,7 @@ extern crate data_encoding;
 extern crate rand;
 extern crate crypto;
 
-use std::ops::{Mul,MulAssign,Sub,RemAssign,AddAssign,SubAssign,Div,Rem,Add};
+use std::ops::{Mul,Sub,Div,Rem,Add};
 use num_traits::{Zero, One};
 use num_bigint::BigUint;
 use num_integer::Integer;
@@ -74,7 +74,7 @@ pub fn point_mul(mut p: Option<Point>, mut n : BigUint, context : &Context) -> O
     }
 }
 
-fn point_add(p1 : &Option<Point>, p2 : &Option<Point>, context : &Context) -> Option<Point> { //TODO borrow parameters
+fn point_add(p1 : &Option<Point>, p2 : &Option<Point>, context : &Context) -> Option<Point> {
     match (p1,p2) {
         (None, None) => None,
         (Some(p1), None) => Some(p1.clone()),
@@ -85,40 +85,23 @@ fn point_add(p1 : &Option<Point>, p2 : &Option<Point>, context : &Context) -> Op
             }
             let lam = if  p1 == p2 {
                 // lam = (3 * p1[0] * p1[0] * pow(2 * p1[1], p - 2, p)) % p
-                let mut res = context.three.clone();
-                res.mul_assign(&p1.x);
-                res.mul_assign(&p1.x);
                 let pow = p1.y.clone().mul(2u32).modpow(&context.p_sub2, &context.p);
-                res.mul_assign(pow);
-                res.rem_assign(&context.p);
-                res
+                context.three.clone().mul(&p1.x).rem(&context.p).mul(&p1.x).rem(&context.p).mul(&pow).rem(&context.p)
             } else {
                 // lam = ((p2[1] - p1[1]) * pow(p2[0] - p1[0], p - 2, p)) % p
-                let mut res = finite_sub( p2.y.clone(), p1.y.clone(), context.p.clone() );
-                let sub = finite_sub( p2.x.clone(), p1.x.clone(), context.p.clone());
-                let pow = sub.modpow(&context.p_sub2, &context.p);
-                res.mul_assign(pow);
-                res.rem_assign(&context.p);
-                res
+                let pow = finite_sub( p2.x.clone(), p1.x.clone(), context.p.clone()).modpow(&context.p_sub2, &context.p);
+                finite_sub( p2.y.clone(), p1.y.clone(), context.p.clone() ).mul(pow).rem(&context.p)
             };
             // x3 = (lam * lam - p1[0] - p2[0]) % p
-            let mut x = lam.clone();
-            x.mul_assign(&lam);
-            x.sub_assign(&p1.x);
-            x.sub_assign(&p2.x);
-            x.rem_assign(&context.p);
-            if x < BigUint::zero() {
-                x.add_assign(&context.p);
-            }
+            let x3 = lam.clone().modpow(&context.two, &context.p);
+            let x3 = finite_sub(x3,p1.x.clone(),context.p.clone());
+            let x3 = finite_sub(x3,p2.x.clone(),context.p.clone());
+
             //(x3, (lam * (p1[0] - x3) - p1[1]) % p)
-            let sub = finite_sub(p1.x.clone(), x.clone(), context.p.clone());
-            let mut y = lam.mul(sub);
-            y.sub_assign(&p1.y);
-            y.rem_assign(&context.p);
-            if y < BigUint::zero() {
-                y.add_assign(&context.p);
-            }
-            Some(Point{x,y})
+            let sub = finite_sub(p1.x.clone(), x3.clone(), context.p.clone());
+            let mut y3 = lam.mul(sub).sub(&p1.y).rem(&context.p);  // check neg
+
+            Some(Point{x:x3,y:y3})
         }
     }
 }
@@ -127,7 +110,7 @@ fn finite_sub(a : BigUint, b : BigUint, p_or_n : BigUint) -> BigUint{
     if a > b {
         a.sub(b)
     } else {
-        a.add(p_or_n.clone()).sub(b)
+        finite_sub(a.add(p_or_n.clone()), b, p_or_n)
     }
 }
 
