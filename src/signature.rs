@@ -1,16 +1,13 @@
-use std::ops::Add;
 use context::Context;
 use num_bigint::BigUint;
 use biguint::to_32_bytes;
-use point::Point;
-use std::ops::Rem;
 use std::fmt;
 
 #[allow(non_snake_case)]
 #[derive(Clone, PartialEq, Eq, Hash)]
-struct Signature {
-    Rx: BigUint,
-    s: BigUint,
+pub struct Signature {
+    pub Rx: BigUint,
+    pub s: BigUint,
 }
 
 impl fmt::Display for Signature {
@@ -21,12 +18,13 @@ impl fmt::Display for Signature {
 
 #[allow(non_snake_case)]
 impl Signature {
-    pub fn new(bytes : &[u8]) -> Signature {
+    pub fn new(bytes : &[u8], context: &Context) -> Signature {
         assert_eq!(bytes.len(),64);
-        Signature {
-            Rx : BigUint::from_bytes_be(&bytes[..32]),
-            s :  BigUint::from_bytes_be(&bytes[32..]),
-        }
+        let Rx = BigUint::from_bytes_be(&bytes[..32]);
+        assert!( Rx < context.p);
+        let s = BigUint::from_bytes_be(&bytes[32..]);
+        assert!( s < context.n);
+        Signature {Rx,s}
     }
 
     pub fn as_bytes(&self) -> Vec<u8> {
