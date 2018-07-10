@@ -57,14 +57,21 @@ impl Point {
         Some(Point {x,y})
     }
 
+    pub fn from_signature_x(x : &BigUint, context : &Context) -> Self {
+        // we don't need to check the parity cause the schnorr sign construct impose one
+        let y = x.modpow(&context.three, &context.p).add(&context.seven).modpow(&context.p_add1_div4, &context.p);
+        Point{x : (*x).clone() ,y}
+    }
+
     pub fn mul(self, n : BigUint, context : &Context) -> Option<Point> {
         point_mul(Some(self), n, context)
     }
 
-    pub fn add(self, p2 : &Option<Point>, context : &Context) -> Option<Point> {
+    pub fn add(self, p2 : &Option<Point>, context : &Context) -> Option<Point> {  //TODO before using standard trait Add, we must use lazy_static for Context?
         point_add(&Some(self), p2, context)
     }
 }
+
 
 pub fn point_mul(mut p: Option<Point>, mut n : BigUint, context : &Context) -> Option<Point> {
     let mut r : Option<Point> = None;

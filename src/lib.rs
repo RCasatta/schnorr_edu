@@ -9,6 +9,7 @@ extern crate crypto;
 pub mod point;
 pub mod context;
 pub mod biguint;
+pub mod signature;
 
 use std::ops::{Mul,Sub,Rem,Add};
 use num_traits::One;
@@ -30,17 +31,17 @@ pub fn schnorr_sign(msg : &[u8], sec_key: &[u8], context : &Context) -> Vec<u8> 
     }
 
     let sec_key = BigUint::from_bytes_be(sec_key);
-    let rx = to_32_bytes( &R.x);
+    let Rx = to_32_bytes( &R.x);
     let dG = point_mul(Some(context.G.clone()), sec_key.clone(), &context).unwrap().as_bytes();
     let mut arg = Vec::new();
-    arg.extend(&rx[..]);
+    arg.extend(&Rx[..]);
     arg.extend(&dG[..]);
     arg.extend(msg);
     let e = sha256(&arg[..]);
     let s = k.add(e.mul(sec_key)).rem(&context.n);
 
     let mut res = Vec::new();
-    res.extend(&rx[..]);
+    res.extend(&Rx[..]);
     res.extend(&to_32_bytes(&s)[..]);
 
     res
