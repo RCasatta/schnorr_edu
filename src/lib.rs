@@ -40,7 +40,7 @@ pub fn schnorr_sign(msg : &[u8], sec_key: &[u8], context : &Context) -> Vec<u8> 
     let s = k.add(e.mul(sec_key)).rem(&context.n);
 
     let mut res = Vec::new();
-    res.extend(&to_32_bytes(&R.x)[..]);
+    res.extend(&rx[..]);
     res.extend(&to_32_bytes(&s)[..]);
 
     res
@@ -96,7 +96,9 @@ mod tests {
     #[test]
     fn test_sign_and_verify() {
         let mut rng = thread_rng();
-        let context = Context::default();
+        let mut context = Context::default();
+        context.populate_map();
+
         let mut msg = [0u8;32];
         let mut sec_key = [0u8;32];
         for _ in 0..10 {
@@ -119,7 +121,8 @@ mod tests {
             let signature_bytes = HEXUPPER.decode(signature.as_bytes()).unwrap();
             assert_eq!(result, schnorr_verify(&message_bytes, &public_bytes, &signature_bytes, context));
         }
-        let context = Context::default();
+        let mut context = Context::default();
+        context.populate_map();
         test_vector_verify(
             "03DEFDEA4CDB677750A420FEE807EACF21EB9898AE79B9768766E4FAA04A2D4A34",
             "4DF3C3F68FCC83B27E9D42C90431A72499F17875C81A599B566C9889B9696703",
@@ -181,7 +184,8 @@ mod tests {
             let signature = schnorr_sign(&message, &sec_key_bytes, &context);
             assert_eq!(signature_check, signature);
         }
-        let context = Context::default();
+        let mut context = Context::default();
+        context.populate_map();
         test_vector(
             "0000000000000000000000000000000000000000000000000000000000000001",
             "0279BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798",

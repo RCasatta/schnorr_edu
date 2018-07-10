@@ -1,9 +1,11 @@
 use num_bigint::BigUint;
 use point::Point;
+use point::point_add;
 use std::ops::Sub;
 use std::ops::Add;
 use std::ops::Div;
 use std::str::FromStr;
+use std::collections::HashMap;
 
 #[allow(non_snake_case)]
 pub struct Context {
@@ -16,6 +18,7 @@ pub struct Context {
     pub seven: BigUint,
     pub n: BigUint,
     pub G: Point,
+    pub map: HashMap<Point, Point>,
 }
 
 impl Default for Context {
@@ -24,6 +27,7 @@ impl Default for Context {
         let p = BigUint::parse_bytes("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F".as_bytes(),16).unwrap();
         let p_sub1 = p.clone().sub(1u32);
         let p_add1 = p.clone().add(1u32);
+        let map = HashMap::new();
         Context {
             p : p.clone(),
             p_sub2 : p.clone().sub(2u32),
@@ -36,7 +40,21 @@ impl Default for Context {
             G : Point {
                 x: BigUint::parse_bytes("79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798".as_bytes(),16).unwrap(),
                 y: BigUint::parse_bytes("483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8".as_bytes(),16).unwrap(),
-            }
+            },
+            map: map,
+        }
+    }
+
+}
+
+impl Context {
+    pub fn populate_map(&mut self) {  //TODO precalculate and initialize through static code
+        let mut current = self.G.clone();
+        let context = Context::default();
+        for _ in 0..256 {
+            let double = point_add(&Some(current.clone()), &Some(current.clone()), &context).unwrap();
+            self.map.insert(current.clone(), double.clone());
+            current = double;
         }
     }
 }

@@ -85,7 +85,7 @@ fn benchmark_biguint(c: &mut Criterion) {
 }
 
 fn benchmark_verify(c: &mut Criterion) {
-    let context = Context::default();
+    let mut context = Context::default();
     let mut rng = thread_rng();
     let msg = [0u8;32];
     let mut sec_key = [0u8;32];
@@ -100,6 +100,7 @@ fn benchmark_verify(c: &mut Criterion) {
         signatures.push(signature);
         pub_keys.push(pub_key);
     }
+    context.populate_map();
 
     c.bench_function("Schnorr verify",move |b| b.iter(|| {
         let i = rng.gen_range(0usize, precomputed_signatures);
@@ -113,7 +114,8 @@ fn benchmark_sign(c: &mut Criterion) {
     let mut rng = thread_rng();
     let mut msg = [0u8;32];
     let mut sec_key = [0u8;32];
-    let context = Context::default();
+    let mut context = Context::default();
+    context.populate_map();
     c.bench_function("Schnorr sign",move |b|
         b.iter(|| {
             rng.fill_bytes(&mut msg);

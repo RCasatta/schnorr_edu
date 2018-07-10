@@ -7,7 +7,7 @@ use biguint::{finite_sub, to_32_bytes};
 use std::ops::{Mul,Sub,Rem,Add};
 use num_traits::One;
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Point {
     pub x: BigUint,
     pub y: BigUint,
@@ -84,7 +84,7 @@ pub fn point_mul(mut p: Option<Point>, mut n : BigUint, context : &Context) -> O
     }
 }
 
-pub fn point_add(p1 : &Option<Point>, p2 : &Option<Point>, context : &Context) -> Option<Point> {
+pub fn point_add(p1 : &Option<Point>, p2 : &Option<Point>, context : &Context) -> Option<Point> {  // TODO change to Option<&Point> !!!
     match (p1,p2) {
         (None, None) => None,
         (Some(p1), None) => Some(p1.clone()),
@@ -94,6 +94,10 @@ pub fn point_add(p1 : &Option<Point>, p2 : &Option<Point>, context : &Context) -
                 return None;
             }
             let lam = if  p1 == p2 {
+                let option = context.map.get(p1);
+                if option.is_some() {
+                    return Some((*option.unwrap()).clone());
+                }
                 // lam = (3 * p1[0] * p1[0] * pow(2 * p1[1], p - 2, p)) % p
                 let pow = p1.y.clone().mul(2u32).modpow(&context.p_sub2, &context.p);
                 context.three.clone().mul(&p1.x).rem(&context.p).mul(&p1.x).rem(&context.p).mul(&pow).rem(&context.p)
