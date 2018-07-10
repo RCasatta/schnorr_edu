@@ -6,13 +6,13 @@ extern crate schnorr_edu;
 
 use rand::prelude::*;
 use criterion::Criterion;
-use schnorr_edu::*;
 use num_bigint::BigUint;
-use std::ops::Mul;
-use std::ops::MulAssign;
-use std::ops::Rem;
+use std::ops::{Mul, MulAssign, Rem, Div};
 use std::str::FromStr;
-use std::ops::Div;
+use schnorr_edu::*;
+use schnorr_edu::point::*;
+use schnorr_edu::context::*;
+use schnorr_edu::biguint::*;
 
 fn benchmark_biguint(c: &mut Criterion) {
     let mut rng = thread_rng();
@@ -157,7 +157,7 @@ fn benchmark_point(c: &mut Criterion) {
 
 criterion_group!{
     name = benches;
-    config = Criterion::default().sample_size(2);
+    config = Criterion::default().sample_size(2).without_plots();
     targets = benchmark_biguint, benchmark_point, benchmark_verify, benchmark_sign
 }
 
