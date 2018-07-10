@@ -10,9 +10,28 @@ This is an educational-only implementation of the proposed [Schnorr BIP](https:/
 * Poor understanding of underlying math
 * Lot of TODOs 
 
+If you want to sign and verify with schnorr use [libsecp256k1]()
+
+
+## Testing
+
 That said, it looks it currently pass the [test vectors](https://github.com/sipa/bips/blob/bip-schnorr/bip-schnorr.mediawiki#test-vectors) of the Schnorr BIP
 
 ```
 cargo test --release
 ```
 
+## Benchmark
+
+When I say non efficient I really mean it!
+libsecp256k1 ECDSA which has comparable complexity AFAIK is about a thousand times faster!
+
+```
+$ cargo bench
+... 
+Schnorr verify          time:   [127.70 ms 127.83 ms 128.37 ms]            
+Schnorr sign            time:   [127.58 ms 129.70 ms 138.19 ms]
+...   
+```
+
+On My mid 2014 Mac Book Pro

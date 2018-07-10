@@ -157,7 +157,7 @@ fn benchmark_point(c: &mut Criterion) {
 
 criterion_group!{
     name = benches;
-    config = Criterion::default().sample_size(2).without_plots();
+    config = Criterion::default().sample_size(2);
     targets = benchmark_biguint, benchmark_point, benchmark_verify, benchmark_sign
 }
 
