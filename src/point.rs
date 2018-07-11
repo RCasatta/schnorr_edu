@@ -3,7 +3,7 @@ use num_bigint::BigUint;
 use num_traits::Zero;
 use num_integer::Integer;
 use context::CONTEXT;
-use biguint::{finite_sub, to_32_bytes};
+use scalar::{finite_sub, to_32_bytes};
 use std::ops::{Mul,Sub,Rem,Add};
 use num_traits::One;
 use context::DOUBLES_CACHE;

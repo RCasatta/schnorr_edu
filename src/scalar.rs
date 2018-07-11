@@ -4,6 +4,7 @@ use crypto::digest::Digest;
 use std::ops::{Sub,Add,Rem};
 use context::CONTEXT;
 
+
 pub fn finite_sub(a : BigUint, b : &BigUint, p_or_n : &BigUint) -> BigUint{
     if a > *b {
         a.sub(b)
@@ -40,5 +41,11 @@ pub fn to_32_bytes(val : &BigUint) -> [u8;32] {
     for i in start..32usize {
         result[i]=bytes[i-start];
     }
+    result
+}
+
+pub fn vec_to_32_bytes(val : &Vec<u8>) -> [u8;32] {
+    let mut result = [0u8;32];
+    result.copy_from_slice(val);
     result
 }

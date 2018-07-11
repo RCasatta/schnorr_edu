@@ -1,6 +1,6 @@
 use context::CONTEXT;
 use num_bigint::BigUint;
-use biguint::to_32_bytes;
+use scalar::to_32_bytes;
 use std::fmt;
 
 #[allow(non_snake_case)]
@@ -18,7 +18,10 @@ impl fmt::Display for Signature {
 
 #[allow(non_snake_case)]
 impl Signature {
-    pub fn new(bytes : &[u8]) -> Signature {
+    pub fn new(Rx : BigUint, s : BigUint) -> Self {
+        Signature {Rx,s}
+    }
+    pub fn from_bytes(bytes : &[u8]) -> Self {
         assert_eq!(bytes.len(),64);
         let Rx = BigUint::from_bytes_be(&bytes[..32]);
         assert!( Rx < CONTEXT.p);

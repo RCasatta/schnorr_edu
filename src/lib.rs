@@ -10,7 +10,7 @@ extern crate crypto;
 
 pub mod point;
 pub mod context;
-pub mod biguint;
+pub mod scalar;
 pub mod signature;
 
 use std::ops::{Mul,Sub,Rem,Add};
@@ -18,49 +18,48 @@ use num_traits::One;
 use num_bigint::BigUint;
 use point::*;
 use context::*;
-use biguint::*;
+use scalar::*;
 use signature::*;
 use rand::prelude::*;
 use num_traits::Zero;
 use std::ops::AddAssign;
 
-#[allow(non_snake_case)]
-pub fn schnorr_sign(msg : &[u8], sec_key: &[u8]) -> Vec<u8> {
+type Msg = [u8;32];
+type SecKey = [u8;32];
 
-    let mut k = concat_and_hash(sec_key, msg, &vec![]);
+#[allow(non_snake_case)]
+pub fn schnorr_sign(msg : &Msg, sec_key: &SecKey) -> Signature {
+
+    let mut k = concat_and_hash(&sec_key[..], msg, &vec![]);
     let R = point_mul(Some(CONTEXT.G.clone()), k.clone()).unwrap();
     if !jacobi(&R.y).is_one() {
         k = finite_sub(CONTEXT.n.clone(), &k, &CONTEXT.n);
     }
 
-    let sec_key = BigUint::from_bytes_be(sec_key);
+    let sec_key = BigUint::from_bytes_be(&sec_key[..]);
     let Rx = to_32_bytes( &R.x);
     let dG = point_mul(Some(CONTEXT.G.clone()), sec_key.clone()).unwrap().as_bytes();
     let e = concat_and_hash(&Rx, &dG, msg);
     let s = k.add(e.mul(sec_key)).rem(&CONTEXT.n);
 
-    let mut res = Vec::new();
-    res.extend(&Rx[..]);
-    res.extend(&to_32_bytes(&s)[..]);
-
-    res
+    Signature::new(R.x,s)
 }
 
 #[allow(non_snake_case)]
-pub fn schnorr_verify(msg : &[u8], pub_key_bytes: &[u8], signature: &[u8]) -> bool {
-    let pub_key = Point::from_bytes(pub_key_bytes).unwrap();
+pub fn schnorr_verify(msg : &Msg, pub_key: &Point, signature: &Signature) -> bool {
     if !pub_key.on_curve() {
         return false;
     }
 
+    let signature = signature.as_bytes();
     let r = BigUint::from_bytes_be(&signature[..32]);
     let s = BigUint::from_bytes_be(&signature[32..]);
     if r >= CONTEXT.p || s >= CONTEXT.n {
         return false;
     }
-    let e = concat_and_hash(&signature[..32], pub_key_bytes, msg);
+    let e = concat_and_hash(&signature[..32], &pub_key.as_bytes()[..], msg);
     let a = point_mul(Some(CONTEXT.G.clone()) , s);
-    let b = point_mul(Some(pub_key) , CONTEXT.n.clone().sub(e));
+    let b = point_mul(Some((*pub_key).clone()) , CONTEXT.n.clone().sub(e));
     let R = point_add(&a,&b);
 
     if R.is_none() {
@@ -80,7 +79,7 @@ pub fn schnorr_verify(msg : &[u8], pub_key_bytes: &[u8], signature: &[u8]) -> bo
 }
 
 #[allow(non_snake_case)]
-pub fn schnorr_batch_verify(messages : &Vec<Vec<u8>>, pub_keys:  &Vec<Point>, signatures:  &Vec<Signature>) -> bool {
+pub fn schnorr_batch_verify(messages : &Vec<Msg>, pub_keys:  &Vec<Point>, signatures:  &Vec<Signature>) -> bool {
     assert_eq!(messages.len(), pub_keys.len());
     assert_eq!(messages.len(), signatures.len());
     let mut R_vec= Vec::new();
@@ -95,7 +94,7 @@ pub fn schnorr_batch_verify(messages : &Vec<Vec<u8>>, pub_keys:  &Vec<Point>, si
         if !P.on_curve() {
             return false;
         }
-        let e = concat_and_hash(&to_32_bytes(&signature.Rx), &P.as_bytes(), &msg);
+        let e = concat_and_hash(&to_32_bytes(&signature.Rx), &P.as_bytes(), &msg[..]);
         e_vec.push(e);
         let c = signature.Rx.modpow(&CONTEXT.three,&CONTEXT.p).add(&CONTEXT.seven).rem(&CONTEXT.p);
         let y = c.modpow(&CONTEXT.p_add1_div4,&CONTEXT.p);
@@ -156,29 +155,28 @@ mod tests {
             //sec_key[31]=1;
             let sec_key_int = BigUint::from_bytes_be(&sec_key);
             let pub_key = point_mul(Some(CONTEXT.G.clone()), sec_key_int).unwrap();
-            let pub_key_bytes = pub_key.as_bytes();
             let signature = schnorr_sign(&msg, &sec_key);
-            let result = schnorr_verify(&msg, &pub_key_bytes, &signature);
+            let result = schnorr_verify(&msg, &pub_key, &signature);
             assert!(result);
 
-            messages.push(msg.to_vec());
+            messages.push(msg);
             pub_keys.push(pub_key);
-            signatures.push(Signature::new(&signature));
+            signatures.push(signature);
         }
 
         assert!(schnorr_batch_verify(&messages, &pub_keys, &signatures));
         messages.pop();
-        messages.push([0u8;32].to_vec());
+        messages.push([0u8;32]);
         assert!(!schnorr_batch_verify(&messages, &pub_keys, &signatures));
     }
 
     #[test]
     fn test_bip_verify() {
         fn test_vector_verify(public : &str, message : &str, signature : &str, result : bool) {
-            let public_bytes = HEXUPPER.decode(public.as_bytes()).unwrap();
-            let message_bytes = HEXUPPER.decode(message.as_bytes()).unwrap();
+            let pub_key = Point::from_bytes( &HEXUPPER.decode(public.as_bytes()).unwrap() ).unwrap();
+            let message_bytes = vec_to_32_bytes( &HEXUPPER.decode(message.as_bytes()).unwrap() );
             let signature_bytes = HEXUPPER.decode(signature.as_bytes()).unwrap();
-            assert_eq!(result, schnorr_verify(&message_bytes, &public_bytes, &signature_bytes));
+            assert_eq!(result, schnorr_verify(&message_bytes, &pub_key, &Signature::from_bytes( &signature_bytes)));
         }
         test_vector_verify(
             "03DEFDEA4CDB677750A420FEE807EACF21EB9898AE79B9768766E4FAA04A2D4A34",
@@ -220,14 +218,15 @@ mod tests {
     #[test]
     fn test_bip_sign() {
         fn test_vector( private : &str, public : &str, message : &str, signature : &str) {
-            let sec_key_bytes = HEXUPPER.decode(private.as_bytes()).unwrap();
+            let sec_key_bytes = vec_to_32_bytes(&HEXUPPER.decode(private.as_bytes()).unwrap());
             let sec_key = BigUint::from_bytes_be(&sec_key_bytes);
             let pub_key = point_mul(Some(CONTEXT.G.clone()), sec_key).unwrap();
             assert_eq!(HEXUPPER.encode( &pub_key.as_bytes()[..]), public);
-            let message = HEXUPPER.decode(message.as_bytes()).unwrap();
+            let message = vec_to_32_bytes( &HEXUPPER.decode(message.as_bytes()).unwrap() );
+
             let signature_check =  HEXUPPER.decode(signature.as_bytes()).unwrap();
             let signature = schnorr_sign(&message, &sec_key_bytes);
-            assert_eq!(signature_check, signature);
+            assert_eq!(signature_check, signature.as_bytes());
         }
 
         test_vector(

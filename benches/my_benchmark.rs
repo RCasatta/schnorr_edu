@@ -12,7 +12,7 @@ use std::str::FromStr;
 use schnorr_edu::*;
 use schnorr_edu::point::*;
 use schnorr_edu::context::*;
-use schnorr_edu::biguint::*;
+use schnorr_edu::scalar::*;
 use schnorr_edu::signature::Signature;
 
 
