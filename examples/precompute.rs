@@ -10,7 +10,7 @@ fn main() {
     let mut current = CONTEXT.G.clone();
 
     for _ in 0..256 {
-        let double = point_add(&Some(current.clone()), &Some(current.clone())).unwrap();
+        let double = point_add(Some(current.clone()), Some(current.clone())).unwrap();
         println!("{},{}", HEXLOWER.encode( &current.as_bytes()) , HEXLOWER.encode(&double.as_bytes()));
         current = double;
     }

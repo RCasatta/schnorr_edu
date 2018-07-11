@@ -13,8 +13,6 @@ use schnorr_edu::*;
 use schnorr_edu::point::*;
 use schnorr_edu::context::*;
 use schnorr_edu::scalar::*;
-use schnorr_edu::signature::Signature;
-
 
 fn benchmark_biguint(c: &mut Criterion) {
     let mut rng = thread_rng();
@@ -84,6 +82,21 @@ fn benchmark_biguint(c: &mut Criterion) {
         let result = a.rem(b);
         criterion::black_box(result);
     } ));
+
+    let mut rng = thread_rng();
+    let mut a = [0u8;32];
+    c.bench_function("BigUint rand", move|b| b.iter(|| {
+        rng.fill_bytes(&mut a);
+        criterion::black_box(a);
+    } ));
+
+    let numbers = numbers_orig.clone();
+    c.bench_function("BigUint cmp", move|b| b.iter(|| {
+        let a =  rand::thread_rng().choose(&numbers).unwrap();
+        let b =  rand::thread_rng().choose(&numbers).unwrap();
+        let result = a>b;
+        criterion::black_box(result);
+    } ));
 }
 
 fn benchmark_verify(c: &mut Criterion) {
@@ -97,7 +110,7 @@ fn benchmark_verify(c: &mut Criterion) {
         rng.fill_bytes(&mut sec_key);
         let signature = schnorr_sign(&msg,&sec_key);
         let sec_key_int = BigUint::from_bytes_be(&sec_key);
-        let pub_key = point_mul(Some(CONTEXT.G.clone()), sec_key_int) .unwrap().as_bytes();
+        let pub_key = point_mul(CONTEXT.G.clone(), sec_key_int) .unwrap();
         signatures.push(signature);
         pub_keys.push(pub_key);
     }
@@ -123,10 +136,10 @@ fn benchmark_batch_verify(c: &mut Criterion) {
         rng.fill_bytes(&mut msg);
         let signature = schnorr_sign(&msg,&sec_key);
         let sec_key_int = BigUint::from_bytes_be(&sec_key);
-        let pub_key = point_mul(Some(CONTEXT.G.clone()), sec_key_int).unwrap();
-        signatures.push(Signature::new(&signature));
+        let pub_key = point_mul(CONTEXT.G.clone(), sec_key_int).unwrap();
+        signatures.push(signature);
         pub_keys.push(pub_key);
-        messages.push(msg.to_vec());
+        messages.push(msg);
     }
 
 
@@ -162,13 +175,13 @@ fn benchmark_point(c: &mut Criterion) {
         rng.fill_bytes(&mut sec_key);
         let sec_key_int = BigUint::from_bytes_be(&sec_key);
         keys.push(sec_key_int.clone());
-        let point = point_mul(Some(CONTEXT.G.clone()), sec_key_int);
+        let point = point_mul(CONTEXT.G.clone(), sec_key_int).unwrap();
         points.push(point);
     }
     c.bench_function("EC Point multiplication",move |b|
         b.iter(|| {
             let sec_key_int = rand::thread_rng().choose(&keys).unwrap();
-            let point = point_mul(Some(CONTEXT.G.clone()), sec_key_int.clone());
+            let point = point_mul(CONTEXT.G.clone(), sec_key_int.clone());
             criterion::black_box(point);
         }));
 
@@ -176,7 +189,7 @@ fn benchmark_point(c: &mut Criterion) {
         b.iter(|| {
             let a = rand::thread_rng().choose(&points).unwrap();
             let b = rand::thread_rng().choose(&points).unwrap();
-            let point = point_add(a,b);
+            let point = point_add(Some((*a).clone()),Some((*b).clone()));
             criterion::black_box(point);
         }));
 }

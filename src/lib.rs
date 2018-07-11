@@ -31,14 +31,14 @@ type SecKey = [u8;32];
 pub fn schnorr_sign(msg : &Msg, sec_key: &SecKey) -> Signature {
 
     let mut k = concat_and_hash(&sec_key[..], msg, &vec![]);
-    let R = point_mul(Some(CONTEXT.G.clone()), k.clone()).unwrap();
+    let R = point_mul(CONTEXT.G.clone(), k.clone()).unwrap();
     if !jacobi(&R.y).is_one() {
         k = finite_sub(CONTEXT.n.clone(), &k, &CONTEXT.n);
     }
 
     let sec_key = BigUint::from_bytes_be(&sec_key[..]);
     let Rx = to_32_bytes( &R.x);
-    let dG = point_mul(Some(CONTEXT.G.clone()), sec_key.clone()).unwrap().as_bytes();
+    let dG = point_mul(CONTEXT.G.clone(), sec_key.clone()).unwrap().as_bytes();
     let e = concat_and_hash(&Rx, &dG, msg);
     let s = k.add(e.mul(sec_key)).rem(&CONTEXT.n);
 
@@ -58,9 +58,9 @@ pub fn schnorr_verify(msg : &Msg, pub_key: &Point, signature: &Signature) -> boo
         return false;
     }
     let e = concat_and_hash(&signature[..32], &pub_key.as_bytes()[..], msg);
-    let a = point_mul(Some(CONTEXT.G.clone()) , s);
-    let b = point_mul(Some((*pub_key).clone()) , CONTEXT.n.clone().sub(e));
-    let R = point_add(&a,&b);
+    let a = point_mul(CONTEXT.G.clone() , s);
+    let b = point_mul((*pub_key).clone() , CONTEXT.n.clone().sub(e));
+    let R = point_add(a,b);
 
     if R.is_none() {
         return false;
@@ -120,12 +120,12 @@ pub fn schnorr_batch_verify(messages : &Vec<Msg>, pub_keys:  &Vec<Point>, signat
         let P = &pub_keys[i];
 
         coeff.add_assign( a.mul(&signature.s).rem(&CONTEXT.n) );
-        R_point_sum = point_add( &R_point_sum, &point_mul( Some((*R).clone()), (*a).clone()));
-        P_point_sum = point_add( &P_point_sum, &point_mul( Some((*P).clone()), a.mul(e)));
+        R_point_sum = point_add( R_point_sum, point_mul( (*R).clone(), (*a).clone()));
+        P_point_sum = point_add( P_point_sum, point_mul( (*P).clone(), a.mul(e)));
     }
 
     let left = CONTEXT.G.clone().mul(coeff).unwrap();
-    let right = point_add( &R_point_sum, &P_point_sum).unwrap();
+    let right = point_add( R_point_sum, P_point_sum).unwrap();
 
     left==right
 }
@@ -154,7 +154,7 @@ mod tests {
             rng.fill_bytes(&mut sec_key);
             //sec_key[31]=1;
             let sec_key_int = BigUint::from_bytes_be(&sec_key);
-            let pub_key = point_mul(Some(CONTEXT.G.clone()), sec_key_int).unwrap();
+            let pub_key = point_mul(CONTEXT.G.clone(), sec_key_int).unwrap();
             let signature = schnorr_sign(&msg, &sec_key);
             let result = schnorr_verify(&msg, &pub_key, &signature);
             assert!(result);
@@ -220,7 +220,7 @@ mod tests {
         fn test_vector( private : &str, public : &str, message : &str, signature : &str) {
             let sec_key_bytes = vec_to_32_bytes(&HEXUPPER.decode(private.as_bytes()).unwrap());
             let sec_key = BigUint::from_bytes_be(&sec_key_bytes);
-            let pub_key = point_mul(Some(CONTEXT.G.clone()), sec_key).unwrap();
+            let pub_key = point_mul(CONTEXT.G.clone(), sec_key).unwrap();
             assert_eq!(HEXUPPER.encode( &pub_key.as_bytes()[..]), public);
             let message = vec_to_32_bytes( &HEXUPPER.decode(message.as_bytes()).unwrap() );
 
