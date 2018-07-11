@@ -13,6 +13,8 @@ use schnorr_edu::*;
 use schnorr_edu::point::*;
 use schnorr_edu::context::*;
 use schnorr_edu::biguint::*;
+use schnorr_edu::signature::Signature;
+
 
 fn benchmark_biguint(c: &mut Criterion) {
     let mut rng = thread_rng();
@@ -85,7 +87,6 @@ fn benchmark_biguint(c: &mut Criterion) {
 }
 
 fn benchmark_verify(c: &mut Criterion) {
-    let mut context = Context::default();
     let mut rng = thread_rng();
     let msg = [0u8;32];
     let mut sec_key = [0u8;32];
@@ -94,33 +95,58 @@ fn benchmark_verify(c: &mut Criterion) {
     let precomputed_signatures= 100usize;
     for _ in 0..precomputed_signatures {
         rng.fill_bytes(&mut sec_key);
-        let signature = schnorr_sign(&msg,&sec_key,&context);
+        let signature = schnorr_sign(&msg,&sec_key);
         let sec_key_int = BigUint::from_bytes_be(&sec_key);
-        let pub_key = point_mul(Some(context.G.clone()), sec_key_int, &context) .unwrap().as_bytes();
+        let pub_key = point_mul(Some(CONTEXT.G.clone()), sec_key_int) .unwrap().as_bytes();
         signatures.push(signature);
         pub_keys.push(pub_key);
     }
-    context.populate_map();
 
     c.bench_function("Schnorr verify",move |b| b.iter(|| {
         let i = rng.gen_range(0usize, precomputed_signatures);
-        let result = schnorr_verify(&msg, &pub_keys[i], &signatures[i], &context);
+        let result = schnorr_verify(&msg, &pub_keys[i], &signatures[i]);
         criterion::black_box(result);
         assert!(result);
     } ));
 }
 
+fn benchmark_batch_verify(c: &mut Criterion) {
+    let mut rng = thread_rng();
+    let mut msg = [0u8;32];
+    let mut sec_key = [0u8;32];
+    let mut signatures = Vec::new();
+    let mut pub_keys = Vec::new();
+    let mut messages = Vec::new();
+    let precomputed_signatures= 100usize;
+    for _ in 0..precomputed_signatures {
+        rng.fill_bytes(&mut sec_key);
+        rng.fill_bytes(&mut msg);
+        let signature = schnorr_sign(&msg,&sec_key);
+        let sec_key_int = BigUint::from_bytes_be(&sec_key);
+        let pub_key = point_mul(Some(CONTEXT.G.clone()), sec_key_int).unwrap();
+        signatures.push(Signature::new(&signature));
+        pub_keys.push(pub_key);
+        messages.push(msg.to_vec());
+    }
+
+
+    c.bench_function("Batch verify",move |b| b.iter(|| {
+        let result = schnorr_batch_verify(&messages, &pub_keys, &signatures);
+        criterion::black_box(result);
+        assert!(result);
+    } ));
+}
+
+
 fn benchmark_sign(c: &mut Criterion) {
     let mut rng = thread_rng();
     let mut msg = [0u8;32];
     let mut sec_key = [0u8;32];
-    let mut context = Context::default();
-    context.populate_map();
     c.bench_function("Schnorr sign",move |b|
         b.iter(|| {
             rng.fill_bytes(&mut msg);
             rng.fill_bytes(&mut sec_key);
-            let signature = schnorr_sign(&msg, &sec_key, &context);
+            let signature = schnorr_sign(&msg, &sec_key);
             criterion::black_box(signature);
 
         }));
@@ -128,7 +154,6 @@ fn benchmark_sign(c: &mut Criterion) {
 
 fn benchmark_point(c: &mut Criterion) {
     let mut rng = thread_rng();
-    let context = Context::default();
     let mut sec_key = [0u8;32];
     let mut points = Vec::new();
     let mut keys = Vec::new();
@@ -137,22 +162,21 @@ fn benchmark_point(c: &mut Criterion) {
         rng.fill_bytes(&mut sec_key);
         let sec_key_int = BigUint::from_bytes_be(&sec_key);
         keys.push(sec_key_int.clone());
-        let point = point_mul(Some(context.G.clone()), sec_key_int, &context);
+        let point = point_mul(Some(CONTEXT.G.clone()), sec_key_int);
         points.push(point);
     }
     c.bench_function("EC Point multiplication",move |b|
         b.iter(|| {
             let sec_key_int = rand::thread_rng().choose(&keys).unwrap();
-            let point = point_mul(Some(context.G.clone()), sec_key_int.clone(), &context);
+            let point = point_mul(Some(CONTEXT.G.clone()), sec_key_int.clone());
             criterion::black_box(point);
         }));
 
-    let context = Context::default();
     c.bench_function("EC Point adding",move |b|
         b.iter(|| {
             let a = rand::thread_rng().choose(&points).unwrap();
             let b = rand::thread_rng().choose(&points).unwrap();
-            let point = point_add(a,b, &context);
+            let point = point_add(a,b);
             criterion::black_box(point);
         }));
 }
@@ -161,7 +185,7 @@ criterion_group!{
     name = benches;
     // config = Criterion::default().sample_size(10);
     config = Criterion::default().sample_size(2).without_plots();
-    targets = benchmark_biguint, benchmark_point, benchmark_verify, benchmark_sign
+    targets = benchmark_biguint, benchmark_point, benchmark_verify, benchmark_batch_verify, benchmark_sign
 }
 
 criterion_main!(benches);

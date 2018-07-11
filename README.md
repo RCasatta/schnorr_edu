@@ -29,8 +29,8 @@ libsecp256k1 ECDSA which has comparable complexity AFAIK is about a thousand tim
 ```
 $ cargo bench
 ... 
-Schnorr verify          time:   [127.70 ms 127.83 ms 128.37 ms]            
-Schnorr sign            time:   [127.58 ms 129.70 ms 138.19 ms]
+Schnorr verify          time:   [82.144 ms 84.999 ms 85.713 ms]                        
+Schnorr sign            time:   [43.060 ms 43.153 ms 43.176 ms]                       
 ...   
 ```
 

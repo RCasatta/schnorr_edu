@@ -19,5 +19,5 @@ criterion = "0.2"
 name = "my_benchmark"
 harness = false
 
-[profile.release]
-lto = true
+# [profile.release]
+# lto = true
