@@ -1,14 +1,18 @@
 use scalar::ScalarP;
+use scalar::ScalarN;
 use point::Point;
 use num_bigint::BigUint;
 use num_traits::One;
 use context::CONTEXT;
-use std::ops::Mul;
-use std::ops::Sub;
+use context::JACOBIAN_DOUBLES_CACHE;
+use std::ops::{Mul,Sub,Add};
 use std::fmt;
 use num_traits::Zero;
+use num_integer::Integer;
 
-#[derive(Clone, Debug)]
+// Very bad defining Eq like this since two equal Jacobian Point could have different coordinates
+// however it's useful for now and used only in the HashMap where values are normalized
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct JacobianPoint {
     pub x: ScalarP,
     pub y: ScalarP,
@@ -31,6 +35,54 @@ impl From<Point> for JacobianPoint {
         }
     }
 }
+
+impl JacobianPoint {
+    pub fn double(self) -> JacobianPoint {
+        jacobian_point_double(self)
+    }
+    pub fn normalize(self) -> JacobianPoint {
+        JacobianPoint::from( Point::from(self))
+    }
+    pub fn as_bytes(&self) -> [u8;64] {
+        let mut res = [0u8;64];
+        let mut p = self.to_owned();
+        if !p.z.0.is_one() {
+            p = p.normalize();
+        }
+        res[..32].copy_from_slice( &p.x.to_32_bytes() );
+        res[32..].copy_from_slice( &p.y.to_32_bytes() );
+        res
+    }
+
+    pub fn from_bytes(bytes : &[u8]) -> Option<Self> {
+        if bytes.len()!=64 {
+            return None;
+        }
+        let x = BigUint::from_bytes_be(&bytes[..32]);
+        let y = BigUint::from_bytes_be(&bytes[..32]);
+        if x > CONTEXT.p.0 || y > CONTEXT.p.0 {
+            return None;
+        }
+        Some(
+            JacobianPoint{
+                x:ScalarP(x),
+                y:ScalarP(y),
+                z:ScalarP(BigUint::one()),
+            })
+    }
+    pub fn mul(self, n : &ScalarN) -> Self {
+        jacobian_point_mul(self, n.to_owned()).unwrap()
+    }
+}
+
+impl Add for JacobianPoint {
+    type Output = JacobianPoint;
+
+    fn add(self, other: JacobianPoint) -> JacobianPoint {
+        jacobian_point_add(Some(self), Some(other)).unwrap()
+    }
+}
+
 
 pub fn jacobian_point_double(p : JacobianPoint) -> JacobianPoint {
     if p.y.0.is_zero() {
@@ -78,6 +130,28 @@ pub fn jacobian_point_add(p1 : Option<JacobianPoint>, p2 : Option<JacobianPoint>
 }
 
 
+pub fn jacobian_point_mul(mut p: JacobianPoint, n : ScalarN) -> Option<JacobianPoint> {
+    let mut r : Option<JacobianPoint> = None;
+    let mut n = n.0;
+
+    loop {
+        let (ris, rem) = n.div_rem(&CONTEXT.two.0);
+
+        if rem.is_one() {
+            r = jacobian_point_add(r,Some(p.clone()));
+        }
+        if ris.is_zero() {
+            return r;
+        }
+        p = match JACOBIAN_DOUBLES_CACHE.get(&p) {
+            None => jacobian_point_add(Some(p.clone()),Some(p)).unwrap(),
+            Some(v) => v.to_owned(),
+        };
+        n = ris;
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -98,6 +172,9 @@ mod tests {
 
         let g3 = point_add(Some(CONTEXT.G.clone()),Some(g2.clone())).unwrap();
         let g3_jac = jacobian_point_add(Some(j.clone()), Some(g2_jac.clone())).unwrap();
+        assert_eq!(g3.clone(), Point::from(g3_jac));
+
+        let g3_jac = jacobian_point_mul(j.clone(), ScalarN(BigUint::one().mul(3u32) )).unwrap();
         assert_eq!(g3, Point::from(g3_jac));
     }
 }

@@ -5,7 +5,7 @@ use scalar::ScalarN;
 use scalar::ScalarP;
 
 #[allow(non_snake_case)]
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Signature {
     pub Rx: ScalarP,
     pub s: ScalarN,

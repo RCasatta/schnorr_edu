@@ -42,6 +42,24 @@ pub fn schnorr_sign(msg : &Msg, sec_key: &ScalarN) -> Signature {
 }
 
 #[allow(non_snake_case)]
+pub fn schnorr_jacobi_sign(msg : &Msg, sec_key: &ScalarN) -> Signature {
+    let sec_key_bytes = sec_key.to_32_bytes();
+    let mut k = concat_and_hash(&sec_key_bytes, msg, &vec![]);
+    let R_jacobian = CONTEXT.G_jacobian.clone().mul(&k);
+    let R = Point::from(R_jacobian);
+    if !R.y.is_jacobi() {
+        k = CONTEXT.n.clone().sub(k);
+    }
+    let Rx = R.x.to_32_bytes();
+    let dG_jacobian = CONTEXT.G_jacobian.clone().mul(sec_key);
+    let dG = Point::from(dG_jacobian);
+    let e = concat_and_hash(&Rx, &dG.as_bytes(), msg);
+    let s = k.add(e.mul(sec_key));
+
+    Signature::new(R.x,s)
+}
+
+#[allow(non_snake_case)]
 pub fn schnorr_verify(msg : &Msg, pub_key: &Point, signature: &Signature) -> bool {
     if !pub_key.on_curve() {
         return false;
@@ -131,6 +149,15 @@ mod tests {
     use super::*;
     use data_encoding::HEXUPPER;
     use context::CONTEXT;
+
+    #[test]
+    fn test_sign_and_jacobi_sign() {
+        let sec_key = thread_rng().gen::<ScalarN>();
+        let msg = [0u8;32];
+        let sign1 = schnorr_sign(&msg, &sec_key);
+        let sign2 = schnorr_jacobi_sign(&msg,&sec_key);
+        assert_eq!(sign1, sign2);
+    }
 
     #[test]
     fn test_sign_and_verify() {

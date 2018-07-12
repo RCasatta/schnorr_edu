@@ -10,6 +10,7 @@ use scalar::ScalarN;
 use scalar::ScalarP;
 use num_traits::One;
 use std::str::FromStr;
+use point::JacobianPoint;
 
 lazy_static! {
     pub static ref CONTEXT: Context = {
@@ -30,6 +31,7 @@ pub struct Context {
     pub eight: ScalarP,
     pub n: ScalarN,
     pub G: Point,
+    pub G_jacobian: JacobianPoint,
 }
 
 impl Default for Context {
@@ -43,6 +45,11 @@ impl Default for Context {
         let eight = BigUint::from_str("8").unwrap();
         let p_sub1 = p.clone().sub(&one);
         let p_add1 = p.clone().add(&one);
+        let g = Point {
+            x: ScalarP(BigUint::parse_bytes("79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798".as_bytes(), 16).unwrap()),
+            y: ScalarP(BigUint::parse_bytes("483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8".as_bytes(), 16).unwrap()),
+        };
+
 
         Context {
             p : ScalarP(p.clone()),
@@ -55,23 +62,37 @@ impl Default for Context {
             seven: ScalarP(seven),
             eight: ScalarP(eight),
             n : ScalarN(BigUint::parse_bytes("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141".as_bytes(),16).unwrap()),
-            G : Point {
-                x: ScalarP(BigUint::parse_bytes("79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798".as_bytes(),16).unwrap()),
-                y: ScalarP(BigUint::parse_bytes("483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8".as_bytes(),16).unwrap()),
-            },
+            G : g.clone(),
+            G_jacobian: JacobianPoint::from(g),
         }
     }
 }
 
 lazy_static! {
-    pub static ref DOUBLES_CACHE: HashMap<Point, Point> = {
+    pub static ref AFFINES_DOUBLES_CACHE: HashMap<Point, Point> = {
         let mut m = HashMap::new();
-        let values = include_str!("cache.in");
-        for line in values.lines() {
-            let elements : Vec<&str> = line.split(",").collect();
+        let mut lines = include_str!("doubles_cache.in").lines();
+        let mut previous = lines.next().unwrap();
+        for line in lines {
             m.insert(
-            Point::from_bytes(&HEXLOWER.decode(elements[0].as_bytes()).unwrap()).unwrap() ,
-            Point::from_bytes(&HEXLOWER.decode(elements[1].as_bytes()).unwrap()).unwrap());
+            Point::from_bytes(&HEXLOWER.decode(previous.as_bytes()).unwrap()).unwrap() ,
+            Point::from_bytes(&HEXLOWER.decode(line.as_bytes()).unwrap()).unwrap());
+            previous=line;
+        }
+        m
+    };
+}
+
+lazy_static! {
+    pub static ref JACOBIAN_DOUBLES_CACHE: HashMap<JacobianPoint, JacobianPoint> = {
+        let mut m = HashMap::new();
+        let mut lines = include_str!("doubles_cache.in").lines();
+        let mut previous = lines.next().unwrap();
+        for line in lines {
+            m.insert(
+            JacobianPoint::from(Point::from_bytes(&HEXLOWER.decode(previous.as_bytes()).unwrap()).unwrap()) ,
+            JacobianPoint::from(Point::from_bytes(&HEXLOWER.decode(line.as_bytes()).unwrap()).unwrap()));
+            previous=line;
         }
         m
     };

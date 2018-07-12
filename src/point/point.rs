@@ -5,7 +5,7 @@ use num_integer::Integer;
 use context::CONTEXT;
 use std::ops::{Mul,Sub,Add};
 use num_traits::One;
-use context::DOUBLES_CACHE;
+use context::AFFINES_DOUBLES_CACHE;
 use scalar::ScalarN;
 use scalar::ScalarP;
 use point::JacobianPoint;
@@ -102,9 +102,9 @@ pub fn point_mul(mut p: Point, n : ScalarN) -> Option<Point> {
         if ris.is_zero() {
             return r;
         }
-        p = match DOUBLES_CACHE.get(&p) {
+        p = match AFFINES_DOUBLES_CACHE.get(&p) {
             None => point_add(Some(p.clone()),Some(p)).unwrap(),
-            Some(v) => (*v).clone(),
+            Some(v) => v.to_owned(),
         };
         n = ris;
 

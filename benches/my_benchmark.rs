@@ -161,31 +161,43 @@ fn benchmark_sign(c: &mut Criterion) {
             criterion::black_box(signature);
 
         }));
+
+    let mut rng = thread_rng();
+    let mut msg = [0u8;32];
+    c.bench_function("Schnorr jacobi sign",move |b|
+        b.iter(|| {
+            rng.fill_bytes(&mut msg);
+            let sec_key= rng.gen();
+            let signature = schnorr_jacobi_sign(&msg, &sec_key);
+            criterion::black_box(signature);
+
+        }));
 }
 
 fn benchmark_point(c: &mut Criterion) {
-    let mut rng = thread_rng();
     let mut points = Vec::new();
-    let mut keys = Vec::new();
     let total = 100usize;
+    let mut rng = thread_rng();
     for _ in 0..total {
-        let sec_key : ScalarN= rng.gen();
+        let sec_key : ScalarN = rng.gen();
         let point = point_mul(CONTEXT.G.clone(), sec_key.clone()).unwrap();
-        keys.push(sec_key);
         points.push(point);
     }
-    c.bench_function("EC Point multiplication",move |b|
+
+    let mut rng = thread_rng();
+    c.bench_function("EC Point adding",move |b|
         b.iter(|| {
-            let sec_key = rand::thread_rng().choose(&keys).unwrap();
-            let point = point_mul(CONTEXT.G.clone(), sec_key.to_owned());
+            let a = rng.choose(&points).unwrap();
+            let b = rng.choose(&points).unwrap();
+            let point = point_add(Some(a.to_owned()),Some(b.to_owned()));
             criterion::black_box(point);
         }));
 
-    c.bench_function("EC Point adding",move |b|
+    let mut rng = thread_rng();
+    c.bench_function("EC Point multiplication",move |b|
         b.iter(|| {
-            let a = rand::thread_rng().choose(&points).unwrap();
-            let b = rand::thread_rng().choose(&points).unwrap();
-            let point = point_add(Some(a.to_owned()),Some(b.to_owned()));
+            let sec_key : ScalarN = rng.gen();
+            let point = point_mul(CONTEXT.G.clone(), sec_key.to_owned());
             criterion::black_box(point);
         }));
 
@@ -197,19 +209,29 @@ fn benchmark_point(c: &mut Criterion) {
             current);
         points.push(current.clone().unwrap());
     }
+
+    let mut rng = thread_rng();
     c.bench_function("EC Jacobian Point adding",move |b|
         b.iter(|| {
-            let a = rand::thread_rng().choose(&points).unwrap();
-            let b = rand::thread_rng().choose(&points).unwrap();
+            let a = rng.choose(&points).unwrap();
+            let b = rng.choose(&points).unwrap();
             let point = jacobian_point_add(Some(a.to_owned()),Some(b.to_owned()));
+            criterion::black_box(point);
+        }));
+
+    let mut rng = thread_rng();
+    c.bench_function("EC Jacobian Point multiplication",move |b|
+        b.iter(|| {
+            let sec_key : ScalarN = rng.gen();
+            let point = jacobian_point_mul(CONTEXT.G_jacobian.clone(), sec_key.to_owned());
             criterion::black_box(point);
         }));
 }
 
 criterion_group!{
     name = benches;
-    // config = Criterion::default().sample_size(10);
-    config = Criterion::default().sample_size(2);
+    //config = Criterion::default().sample_size(10);
+    config = Criterion::default().sample_size(2).without_plots();
     targets = benchmark_biguint, benchmark_point, benchmark_verify, benchmark_batch_verify, benchmark_sign
 }
 
