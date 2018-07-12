@@ -4,15 +4,22 @@ use context::CONTEXT;
 use super::to_32_bytes;
 use super::finite_sub;
 use num_traits::One;
+use std::fmt;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct ScalarP(pub BigUint);
+
+impl fmt::Display for ScalarP {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 impl ScalarP {
     pub fn new(val: BigUint) -> Self {
         match val < CONTEXT.p.0 {
             true  => ScalarP(val),
-            false => ScalarP(val.rem(&CONTEXT.p.0)),
+            false => ScalarP(val.rem(&CONTEXT.p.0)),   // TODO not sure if panic here
         }
     }
     pub fn from_bytes(bytes: &[u8]) -> Self {
@@ -23,6 +30,9 @@ impl ScalarP {
     }
     pub fn pow(&self, n: &ScalarP) -> Self {
         ScalarP(self.0.modpow(&n.0, &CONTEXT.p.0))
+    }
+    pub fn inv(&self) -> Self {
+        ScalarP(self.0.modpow(&CONTEXT.p_sub2.0, &CONTEXT.p.0))
     }
 
     pub fn is_jacobi(&self) -> bool {
@@ -63,5 +73,17 @@ impl<'a> Div<&'a ScalarP> for ScalarP {
 
     fn div(self, other: &ScalarP) -> ScalarP {
         ScalarP::new(self.0.div(&other.0) )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use context::CONTEXT;
+
+    #[test]
+    fn test_inv() {
+        assert!(CONTEXT.G.x.clone().inv().mul(&CONTEXT.G.x).0.is_one());
+
     }
 }

@@ -16,7 +16,7 @@ pub mod signature;
 use std::ops::{Mul,Sub,Add};
 use num_traits::One;
 use num_bigint::BigUint;
-use point::*;
+use point::point::*;
 use context::*;
 use scalar::*;
 use signature::*;
@@ -28,16 +28,15 @@ type Msg = [u8;32];
 #[allow(non_snake_case)]
 pub fn schnorr_sign(msg : &Msg, sec_key: &ScalarN) -> Signature {
     let sec_key_bytes = sec_key.to_32_bytes();
-
     let mut k = concat_and_hash(&sec_key_bytes, msg, &vec![]);
-    let R = point_mul(CONTEXT.G.clone(), k.clone()).unwrap();
+    let R = CONTEXT.G.clone().mul( &k);
     if !R.y.is_jacobi() {
         k = CONTEXT.n.clone().sub(k);
     }
-    let Rx = R.x.clone().to_32_bytes();
-    let dG = point_mul(CONTEXT.G.clone(), (*sec_key).clone()).unwrap().as_bytes();
+    let Rx = R.x.to_32_bytes();
+    let dG = CONTEXT.G.clone().mul(sec_key).as_bytes();
     let e = concat_and_hash(&Rx, &dG, msg);
-    let s = k.add(e.mul((*sec_key).clone()));
+    let s = k.add(e.mul(sec_key));
 
     Signature::new(R.x,s)
 }
@@ -55,8 +54,8 @@ pub fn schnorr_verify(msg : &Msg, pub_key: &Point, signature: &Signature) -> boo
         return false;
     }
     let e = concat_and_hash(&signature_bytes[..32], &pub_key.as_bytes()[..], msg);
-    let a = point_mul(CONTEXT.G.clone() , signature.s.clone());
-    let b = point_mul(pub_key.to_owned() , CONTEXT.n.clone().sub(e));
+    let a = point_mul( CONTEXT.G.clone(),signature.s.clone() ) ;
+    let b = point_mul( pub_key.to_owned(), CONTEXT.n.clone().sub(e)  );
     let R = point_add(a,b);
 
     if R.is_none() {
@@ -112,13 +111,13 @@ pub fn schnorr_batch_verify(messages : &Vec<Msg>, pub_keys:  &Vec<Point>, signat
         let e = &e_vec[i];
         let P = &pub_keys[i];
 
-        coeff = coeff.add( (*a).clone().mul(signature.s.clone()) );
-        R_point_sum = point_add( R_point_sum, point_mul( (*R).clone(), (*a).clone()));
-        P_point_sum = point_add( P_point_sum, point_mul( (*P).clone(), (*a).clone().mul((*e).clone())));
+        coeff = coeff.add( a.to_owned().mul(&signature.s) );
+        R_point_sum = point_add(point_mul(R.to_owned(), a.to_owned() ), R_point_sum);
+        P_point_sum = point_add(point_mul(P.to_owned(), a.to_owned().mul(e) ),P_point_sum);
     }
 
-    let left = CONTEXT.G.clone().mul(coeff).unwrap();
-    let right = point_add( R_point_sum, P_point_sum).unwrap();
+    let left = CONTEXT.G.clone().mul(&coeff);
+    let right = point_add(R_point_sum, P_point_sum).unwrap();
 
     left==right
 }

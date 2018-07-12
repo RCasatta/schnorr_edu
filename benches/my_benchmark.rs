@@ -2,17 +2,20 @@
 extern crate criterion;
 extern crate rand;
 extern crate num_bigint;
+extern crate num_traits;
 extern crate schnorr_edu;
 
 use rand::prelude::*;
 use criterion::Criterion;
 use num_bigint::BigUint;
-use std::ops::{Mul, MulAssign, Rem, Div, Sub};
+use std::ops::{Mul, MulAssign, Rem, Div};
+use num_traits::ops::checked::CheckedSub;
 use std::str::FromStr;
 use schnorr_edu::*;
 use schnorr_edu::point::*;
 use schnorr_edu::context::*;
 use schnorr_edu::scalar::*;
+
 
 fn benchmark_biguint(c: &mut Criterion) {
     let mut rng = thread_rng();
@@ -43,10 +46,10 @@ fn benchmark_biguint(c: &mut Criterion) {
     } ));
 
     let numbers = numbers_orig.clone();
-    c.bench_function("BigUint sub",move |b| b.iter(|| {
+    c.bench_function("BigUint checked_sub",move |b| b.iter(|| {
         let a = rand::thread_rng().choose(&numbers).unwrap();
         let b = rand::thread_rng().choose(&numbers).unwrap();
-        let result = a.sub(b);
+        let result = a.checked_sub(b);
         criterion::black_box(result);
     } ));
 
@@ -185,12 +188,28 @@ fn benchmark_point(c: &mut Criterion) {
             let point = point_add(Some(a.to_owned()),Some(b.to_owned()));
             criterion::black_box(point);
         }));
+
+    let mut points = Vec::new();
+    let mut current = None;
+    for _ in 0..total {
+        current = jacobian_point_add(
+            Some( JacobianPoint::from(CONTEXT.G.clone())),
+            current);
+        points.push(current.clone().unwrap());
+    }
+    c.bench_function("EC Jacobian Point adding",move |b|
+        b.iter(|| {
+            let a = rand::thread_rng().choose(&points).unwrap();
+            let b = rand::thread_rng().choose(&points).unwrap();
+            let point = jacobian_point_add(Some(a.to_owned()),Some(b.to_owned()));
+            criterion::black_box(point);
+        }));
 }
 
 criterion_group!{
     name = benches;
     // config = Criterion::default().sample_size(10);
-    config = Criterion::default().sample_size(2).without_plots();
+    config = Criterion::default().sample_size(2);
     targets = benchmark_biguint, benchmark_point, benchmark_verify, benchmark_batch_verify, benchmark_sign
 }
 

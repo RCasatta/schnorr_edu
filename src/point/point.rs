@@ -8,6 +8,7 @@ use num_traits::One;
 use context::DOUBLES_CACHE;
 use scalar::ScalarN;
 use scalar::ScalarP;
+use point::JacobianPoint;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Point {
@@ -21,6 +22,15 @@ impl fmt::Display for Point {
     }
 }
 
+
+impl From<JacobianPoint> for Point {
+    fn from(j: JacobianPoint) -> Self {
+        //(X / Z^2, Y / Z^3).
+        let x = j.x.mul( &j.z.pow( &CONTEXT.two ).inv()  );
+        let y = j.y.mul( &j.z.pow( &CONTEXT.three ).inv() );
+        Point{x,y}
+    }
+}
 
 impl Point {
 
@@ -65,8 +75,8 @@ impl Point {
         Point{x : x.to_owned() ,y}
     }
 
-    pub fn mul(self, n : ScalarN) -> Option<Point> {
-        point_mul(self, n)
+    pub fn mul(self, n : &ScalarN) -> Point {
+        point_mul(self, n.to_owned()).unwrap()
     }
 }
 
@@ -101,7 +111,7 @@ pub fn point_mul(mut p: Point, n : ScalarN) -> Option<Point> {
     }
 }
 
-pub fn point_add(p1 : Option<Point>, p2 : Option<Point>) -> Option<Point> {  // TODO change to Option<&Point> !!!
+pub fn point_add(p1 : Option<Point>, p2 : Option<Point>) -> Option<Point> {
     match (p1,p2) {
         (None, None) => None,
         (Some(p1), None) => Some(p1.clone()),
@@ -112,11 +122,11 @@ pub fn point_add(p1 : Option<Point>, p2 : Option<Point>) -> Option<Point> {  // 
             }
             let lam = if  p1 == p2 {
                 // lam = (3 * p1[0] * p1[0] * pow(2 * p1[1], p - 2, p)) % p
-                let pow = p1.y.clone().mul(&CONTEXT.two).pow(&CONTEXT.p_sub2);
+                let pow = p1.y.clone().mul(&CONTEXT.two).inv();
                 CONTEXT.three.clone().mul(&p1.x).mul(&p1.x).mul(&pow)
             } else {
                 // lam = ((p2[1] - p1[1]) * pow(p2[0] - p1[0], p - 2, p)) % p
-                let pow = p2.x.clone().sub(&p1.x).pow(&CONTEXT.p_sub2);
+                let pow = p2.x.clone().sub(&p1.x).inv();
                 p2.y.clone().sub(&p1.y.clone()).mul(&pow)
 
                 //let pow = finite_sub( p2.x.clone(), &p1.x, &CONTEXT.p).modpow(&CONTEXT.p_sub2, &CONTEXT.p);
@@ -142,7 +152,7 @@ mod tests {
     use num_integer::Integer;
     use std::str::FromStr;
     use context::CONTEXT;
-    use point::*;
+    use point::point::*;
     use data_encoding::HEXLOWER;
 
     #[test]

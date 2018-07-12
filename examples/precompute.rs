@@ -2,7 +2,7 @@ extern crate schnorr_edu;
 extern crate data_encoding;
 
 use schnorr_edu::context::CONTEXT;
-use schnorr_edu::point::point_add;
+use schnorr_edu::point::point::point_add;
 use data_encoding::HEXLOWER;
 
 fn main() {

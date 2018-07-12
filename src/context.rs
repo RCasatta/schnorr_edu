@@ -25,7 +25,9 @@ pub struct Context {
     pub p_add1_div4: ScalarP,
     pub two: ScalarP,
     pub three: ScalarP,
+    pub four: ScalarP,
     pub seven: ScalarP,
+    pub eight: ScalarP,
     pub n: ScalarN,
     pub G: Point,
 }
@@ -38,6 +40,7 @@ impl Default for Context {
         let three =  BigUint::from_str("3").unwrap();
         let four = BigUint::from_str("4").unwrap();
         let seven = BigUint::from_str("7").unwrap();
+        let eight = BigUint::from_str("8").unwrap();
         let p_sub1 = p.clone().sub(&one);
         let p_add1 = p.clone().add(&one);
 
@@ -48,7 +51,9 @@ impl Default for Context {
             p_add1_div4: ScalarP(p_add1.div(&four)),
             two: ScalarP(two),
             three: ScalarP(three),
+            four: ScalarP(four),
             seven: ScalarP(seven),
+            eight: ScalarP(eight),
             n : ScalarN(BigUint::parse_bytes("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141".as_bytes(),16).unwrap()),
             G : Point {
                 x: ScalarP(BigUint::parse_bytes("79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798".as_bytes(),16).unwrap()),

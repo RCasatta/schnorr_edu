@@ -6,11 +6,17 @@ use rand::distributions::Standard;
 use rand::Rng;
 use super::to_32_bytes;
 use super::finite_sub;
-
+use std::fmt;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct ScalarN(pub BigUint);
 
+
+impl fmt::Display for ScalarN {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 impl ScalarN {
     pub fn new(val: BigUint) -> Self {
@@ -40,13 +46,15 @@ impl Add for ScalarN {
         ScalarN::new(self.0.add(other.0) )
     }
 }
-impl Mul for ScalarN {
+
+impl<'a> Mul<&'a ScalarN> for ScalarN {
     type Output = ScalarN;
 
-    fn mul(self, other: ScalarN) -> <Self as Mul<ScalarN>>::Output {
-        ScalarN::new(self.0.mul(other.0) )
+    fn mul(self, other: &ScalarN) -> ScalarN {
+        ScalarN::new(self.0.mul(&other.0) )
     }
 }
+
 impl Distribution<ScalarN> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> ScalarN {
         let mut bytes = [0u8;32];
