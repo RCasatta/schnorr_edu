@@ -12,7 +12,7 @@ use num_integer::Integer;
 
 // Very bad defining Eq like this since two equal Jacobian Point could have different coordinates
 // however it's useful for now and used only in the HashMap where values are normalized
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug)]
 pub struct JacobianPoint {
     pub x: ScalarP,
     pub y: ScalarP,
@@ -35,6 +35,27 @@ impl From<Point> for JacobianPoint {
         }
     }
 }
+
+impl PartialEq for JacobianPoint {
+    fn eq(&self, other: &JacobianPoint) -> bool {
+        if self.x == other.x && self.y == other.y && self.z == other.z {
+            return true;
+        }
+
+        let u1 = self.x.clone().mul(&other.z.clone().pow(&CONTEXT.two));
+        let u2 = other.x.clone().mul(&self.z.clone().pow(&CONTEXT.two));
+
+        let s1 = self.y.clone().mul(&other.z.clone().pow(&CONTEXT.three));
+        let s2 = other.y.clone().mul(&self.z.clone().pow(&CONTEXT.three));
+
+        if u1 == u2 && s1 == s2 {
+            return true;
+        }
+
+        false
+    }
+}
+impl Eq for JacobianPoint {}
 
 impl JacobianPoint {
     pub fn double(self) -> JacobianPoint {
@@ -112,7 +133,7 @@ pub fn jacobian_point_add(p1 : Option<JacobianPoint>, p2 : Option<JacobianPoint>
                 if s1==s2 {
                     return Some(jacobian_point_double(p1));
                 } else {
-                    panic!("POINT_AT_INFINITY");
+                    return None;
                 }
             }
             let h = u2.sub(&u1);
@@ -133,8 +154,9 @@ pub fn jacobian_point_add(p1 : Option<JacobianPoint>, p2 : Option<JacobianPoint>
 pub fn jacobian_point_mul(mut p: JacobianPoint, n : ScalarN) -> Option<JacobianPoint> {
     let mut r : Option<JacobianPoint> = None;
     let mut n = n.0;
+    let is_g = p == CONTEXT.G_jacobian;
 
-    loop {
+    for i in 0..256usize {
         let (ris, rem) = n.div_rem(&CONTEXT.two.0);
 
         if rem.is_one() {
@@ -143,12 +165,13 @@ pub fn jacobian_point_mul(mut p: JacobianPoint, n : ScalarN) -> Option<JacobianP
         if ris.is_zero() {
             return r;
         }
-        p = match JACOBIAN_DOUBLES_CACHE.get(&p) {
-            None => jacobian_point_add(Some(p.clone()),Some(p)).unwrap(),
-            Some(v) => v.to_owned(),
+        p = match is_g {
+            true  => JACOBIAN_DOUBLES_CACHE[i].clone(),
+            false => jacobian_point_add(Some(p.clone()),Some(p)).unwrap(),
         };
         n = ris;
     }
+    None
 }
 
 

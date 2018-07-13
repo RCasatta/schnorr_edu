@@ -22,6 +22,12 @@ impl fmt::Display for Point {
     }
 }
 
+impl Default for Point {
+    fn default() -> Self {
+        Point{x: ScalarP(BigUint::zero()), y: ScalarP(BigUint::zero())}
+    }
+}
+
 
 impl From<JacobianPoint> for Point {
     fn from(j: JacobianPoint) -> Self {
@@ -92,8 +98,9 @@ impl Add for Point {
 pub fn point_mul(mut p: Point, n : ScalarN) -> Option<Point> {
     let mut r : Option<Point> = None;
     let mut n = n.0;
+    let is_g = p == CONTEXT.G;
 
-    loop {
+    for i in 0..256usize {
         let (ris, rem) = n.div_rem(&CONTEXT.two.0);
 
         if rem.is_one() {
@@ -102,13 +109,13 @@ pub fn point_mul(mut p: Point, n : ScalarN) -> Option<Point> {
         if ris.is_zero() {
             return r;
         }
-        p = match AFFINES_DOUBLES_CACHE.get(&p) {
-            None => point_add(Some(p.clone()),Some(p)).unwrap(),
-            Some(v) => v.to_owned(),
+        p = match is_g {
+            true  => AFFINES_DOUBLES_CACHE[i].clone(),
+            false => point_add(Some(p.clone()),Some(p)).unwrap(),
         };
         n = ris;
-
     }
+    None
 }
 
 pub fn point_add(p1 : Option<Point>, p2 : Option<Point>) -> Option<Point> {

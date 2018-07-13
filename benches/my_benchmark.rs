@@ -102,23 +102,33 @@ fn benchmark_biguint(c: &mut Criterion) {
 }
 
 fn benchmark_verify(c: &mut Criterion) {
-    let mut rng = thread_rng();
     let msg = [0u8;32];
 
-    let mut signatures = Vec::new();
-    let mut pub_keys = Vec::new();
+    let mut signatures_orig = Vec::new();
+    let mut pub_keys_orig = Vec::new();
     let precomputed_signatures= 100usize;
     for _ in 0..precomputed_signatures {
-        let sec_key = rng.gen();
+        let sec_key = thread_rng().gen();
         let signature = schnorr_sign(&msg,&sec_key);
         let pub_key = point_mul(CONTEXT.G.clone(), sec_key) .unwrap();
-        signatures.push(signature);
-        pub_keys.push(pub_key);
+        signatures_orig.push(signature);
+        pub_keys_orig.push(pub_key);
     }
 
+    let signatures = signatures_orig.clone();
+    let pub_keys = pub_keys_orig.clone();
     c.bench_function("Schnorr verify",move |b| b.iter(|| {
-        let i = rng.gen_range(0usize, precomputed_signatures);
+        let i = thread_rng().gen_range(0usize, precomputed_signatures);
         let result = schnorr_verify(&msg, &pub_keys[i], &signatures[i]);
+        criterion::black_box(result);
+        assert!(result);
+    } ));
+
+    let signatures = signatures_orig.clone();
+    let pub_keys = pub_keys_orig.clone();
+    c.bench_function("Schnorr jacobi verify",move |b| b.iter(|| {
+        let i = thread_rng().gen_range(0usize, precomputed_signatures);
+        let result = schnorr_jacobi_verify(&msg, &pub_keys[i], &signatures[i]);
         criterion::black_box(result);
         assert!(result);
     } ));
@@ -230,8 +240,8 @@ fn benchmark_point(c: &mut Criterion) {
 
 criterion_group!{
     name = benches;
-    //config = Criterion::default().sample_size(10);
-    config = Criterion::default().sample_size(2).without_plots();
+    config = Criterion::default().sample_size(10);
+    //config = Criterion::default().sample_size(2).without_plots();
     targets = benchmark_biguint, benchmark_point, benchmark_verify, benchmark_batch_verify, benchmark_sign
 }
 

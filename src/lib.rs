@@ -17,6 +17,7 @@ use std::ops::{Mul,Sub,Add};
 use num_traits::One;
 use num_bigint::BigUint;
 use point::point::*;
+use point::jacobian_point::*;
 use context::*;
 use scalar::*;
 use signature::*;
@@ -58,6 +59,40 @@ pub fn schnorr_jacobi_sign(msg : &Msg, sec_key: &ScalarN) -> Signature {
 
     Signature::new(R.x,s)
 }
+
+#[allow(non_snake_case)]
+pub fn schnorr_jacobi_verify(msg : &Msg, pub_key: &Point, signature: &Signature) -> bool {
+    if !pub_key.on_curve() {
+        return false;
+    }
+
+    let signature_bytes = signature.as_bytes();
+    let r = BigUint::from_bytes_be(&signature_bytes[..32]);
+    let s = BigUint::from_bytes_be(&signature_bytes[32..]);
+    if r >= CONTEXT.p.0 || s >= CONTEXT.n.0 {  // TODO Probably can't happen since ScalarN always < N
+        return false;
+    }
+    let e = concat_and_hash(&signature_bytes[..32], &pub_key.as_bytes()[..], msg);
+    let a = CONTEXT.G_jacobian.clone().mul(&signature.s);
+    let b = JacobianPoint::from(pub_key.to_owned()).mul(&CONTEXT.n.clone().sub(e));
+    let R = Point::from(a.add(b));
+
+    /*if R.is_none() {
+        return false;
+    }
+    let R = R.unwrap();*/
+
+    if R.x != signature.Rx {
+        return false;
+    }
+
+    if !R.y.is_jacobi() {
+        return false
+    }
+
+    true
+}
+
 
 #[allow(non_snake_case)]
 pub fn schnorr_verify(msg : &Msg, pub_key: &Point, signature: &Signature) -> bool {
@@ -174,6 +209,8 @@ mod tests {
             let pub_key = point_mul(CONTEXT.G.clone(), sec_key.clone()).unwrap();
             let signature = schnorr_sign(&msg, &sec_key);
             let result = schnorr_verify(&msg, &pub_key, &signature);
+            assert!(result);
+            let result = schnorr_jacobi_verify(&msg, &pub_key, &signature);
             assert!(result);
 
             messages.push(msg);

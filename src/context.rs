@@ -4,7 +4,6 @@ use point::Point;
 use std::ops::Sub;
 use std::ops::Add;
 use std::ops::Div;
-use std::collections::HashMap;
 use data_encoding::HEXLOWER;
 use scalar::ScalarN;
 use scalar::ScalarP;
@@ -69,32 +68,24 @@ impl Default for Context {
 }
 
 lazy_static! {
-    pub static ref AFFINES_DOUBLES_CACHE: HashMap<Point, Point> = {
-        let mut m = HashMap::new();
-        let mut lines = include_str!("doubles_cache.in").lines();
-        let mut previous = lines.next().unwrap();
+    pub static ref AFFINES_DOUBLES_CACHE: Vec<Point> = {  // I can't initialize [Point;256]
+        let mut cache = Vec::with_capacity(256);
+        let lines = include_str!("doubles_cache.in").lines();
         for line in lines {
-            m.insert(
-            Point::from_bytes(&HEXLOWER.decode(previous.as_bytes()).unwrap()).unwrap() ,
-            Point::from_bytes(&HEXLOWER.decode(line.as_bytes()).unwrap()).unwrap());
-            previous=line;
+            cache.push(Point::from_bytes(&HEXLOWER.decode(line.as_bytes()).unwrap()).unwrap());
         }
-        m
+        cache
     };
 }
 
 lazy_static! {
-    pub static ref JACOBIAN_DOUBLES_CACHE: HashMap<JacobianPoint, JacobianPoint> = {
-        let mut m = HashMap::new();
-        let mut lines = include_str!("doubles_cache.in").lines();
-        let mut previous = lines.next().unwrap();
+    pub static ref JACOBIAN_DOUBLES_CACHE: Vec<JacobianPoint> = {
+        let mut cache = Vec::with_capacity(256);
+        let lines = include_str!("doubles_cache.in").lines();
         for line in lines {
-            m.insert(
-            JacobianPoint::from(Point::from_bytes(&HEXLOWER.decode(previous.as_bytes()).unwrap()).unwrap()) ,
-            JacobianPoint::from(Point::from_bytes(&HEXLOWER.decode(line.as_bytes()).unwrap()).unwrap()));
-            previous=line;
+            cache.push(JacobianPoint::from(Point::from_bytes(&HEXLOWER.decode(line.as_bytes()).unwrap()).unwrap()));
         }
-        m
+        cache
     };
 }
 
