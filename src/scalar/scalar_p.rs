@@ -5,6 +5,9 @@ use super::to_32_bytes;
 use super::finite_sub;
 use num_traits::One;
 use std::fmt;
+use rand::distributions::Distribution;
+use rand::distributions::Standard;
+use rand::Rng;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct ScalarP(pub BigUint);
@@ -75,6 +78,21 @@ impl<'a> Div<&'a ScalarP> for ScalarP {
         ScalarP::new(self.0.div(&other.0) )
     }
 }
+
+impl Distribution<ScalarP> for Standard {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> ScalarP {
+        let mut bytes = [0u8;32];
+        loop {
+            rng.fill_bytes(&mut bytes);
+            let be = BigUint::from_bytes_be(&bytes);
+            if be < CONTEXT.p.0 {
+                return ScalarP::new(be);
+            }
+        }
+    }
+}
+
+
 
 #[cfg(test)]
 mod tests {

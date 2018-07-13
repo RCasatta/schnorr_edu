@@ -4,8 +4,11 @@ extern crate rand;
 extern crate num_bigint;
 extern crate num_traits;
 extern crate schnorr_edu;
+extern crate secp256k1;
 
-use rand::prelude::*;
+use rand::Rng;
+use rand::thread_rng;
+use rand::RngCore;
 use criterion::Criterion;
 use num_bigint::BigUint;
 use std::ops::{Mul, MulAssign, Rem, Div};
@@ -15,6 +18,9 @@ use schnorr_edu::*;
 use schnorr_edu::point::*;
 use schnorr_edu::context::*;
 use schnorr_edu::scalar::*;
+use secp256k1::Secp256k1;
+use secp256k1::Message;
+use secp256k1::key::SecretKey;
 
 
 fn benchmark_biguint(c: &mut Criterion) {
@@ -34,6 +40,11 @@ fn benchmark_biguint(c: &mut Criterion) {
         let c =  rand::thread_rng().choose(&numbers).unwrap();
         let result = a.modpow(b, c);
         criterion::black_box(result);
+    } ));
+
+    c.bench_function("ScalarP inv", move|b| b.iter(|| {
+        let a : ScalarP =  rand::thread_rng().gen();
+        criterion::black_box(a.inv());
     } ));
 
     let numbers = numbers_orig.clone();
@@ -137,23 +148,35 @@ fn benchmark_verify(c: &mut Criterion) {
 fn benchmark_batch_verify(c: &mut Criterion) {
     let mut rng = thread_rng();
     let mut msg = [0u8;32];
-    let mut signatures = Vec::new();
-    let mut pub_keys = Vec::new();
-    let mut messages = Vec::new();
-    let precomputed_signatures= 100usize;
+    let mut signatures_orig = Vec::new();
+    let mut pub_keys_orig = Vec::new();
+    let mut messages_orig = Vec::new();
+    let precomputed_signatures= 10usize;
     for _ in 0..precomputed_signatures {
         let sec_key = rng.gen();
         rng.fill_bytes(&mut msg);
         let signature = schnorr_sign(&msg,&sec_key);
         let pub_key = point_mul(CONTEXT.G.clone(), sec_key).unwrap();
-        signatures.push(signature);
-        pub_keys.push(pub_key);
-        messages.push(msg);
+        signatures_orig.push(signature);
+        pub_keys_orig.push(pub_key);
+        messages_orig.push(msg);
     }
 
 
+    let signatures = signatures_orig.clone();
+    let pub_keys = pub_keys_orig.clone();
+    let messages = messages_orig.clone();
     c.bench_function("Batch verify",move |b| b.iter(|| {
         let result = schnorr_batch_verify(&messages, &pub_keys, &signatures);
+        criterion::black_box(result);
+        assert!(result);
+    } ));
+
+    let signatures = signatures_orig.clone();
+    let pub_keys = pub_keys_orig.clone();
+    let messages = messages_orig.clone();
+    c.bench_function("Batch verify jacobi",move |b| b.iter(|| {
+        let result = schnorr_jacobi_batch_verify(&messages, &pub_keys, &signatures);
         criterion::black_box(result);
         assert!(result);
     } ));
@@ -182,7 +205,23 @@ fn benchmark_sign(c: &mut Criterion) {
             criterion::black_box(signature);
 
         }));
+
+    let mut rng = rand::thread_rng();
+    let secp = Secp256k1::new();
+
+    let mut msg = [0u8;32];
+    c.bench_function("Schnorr libsecp sign",move |b|
+        b.iter(|| {
+            rng.fill_bytes(&mut msg);
+            let scalar_key : ScalarN = rng.gen();
+            let sk = SecretKey::from_slice(&secp, &scalar_key.to_32_bytes()).unwrap();
+            let message = Message::from_slice(&msg[..]).unwrap() ;
+            let signature : secp256k1::Signature = secp.sign(&message, &sk).unwrap();
+            criterion::black_box(signature);
+        }));
 }
+
+
 
 fn benchmark_point(c: &mut Criterion) {
     let mut points = Vec::new();
@@ -240,8 +279,8 @@ fn benchmark_point(c: &mut Criterion) {
 
 criterion_group!{
     name = benches;
-    config = Criterion::default().sample_size(10);
-    //config = Criterion::default().sample_size(2).without_plots();
+    //config = Criterion::default().sample_size(10);
+    config = Criterion::default().sample_size(2).without_plots();
     targets = benchmark_biguint, benchmark_point, benchmark_verify, benchmark_batch_verify, benchmark_sign
 }
 
