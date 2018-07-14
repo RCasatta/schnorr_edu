@@ -155,7 +155,7 @@ fn benchmark_batch_verify(c: &mut Criterion) {
     for _ in 0..precomputed_signatures {
         let sec_key = rng.gen();
         rng.fill_bytes(&mut msg);
-        let signature = schnorr_sign(&msg,&sec_key);
+        let signature = schnorr_jacobi_sign(&msg,&sec_key);
         let pub_key = point_mul(CONTEXT.G.clone(), sec_key).unwrap();
         signatures_orig.push(signature);
         pub_keys_orig.push(pub_key);
@@ -177,6 +177,15 @@ fn benchmark_batch_verify(c: &mut Criterion) {
     let messages = messages_orig.clone();
     c.bench_function("Batch verify jacobi",move |b| b.iter(|| {
         let result = schnorr_jacobi_batch_verify(&messages, &pub_keys, &signatures);
+        criterion::black_box(result);
+        assert!(result);
+    } ));
+
+    let signatures = signatures_orig.clone();
+    let pub_keys = pub_keys_orig.clone();
+    let messages = messages_orig.clone();
+    c.bench_function("Batch optimized verify jacobi",move |b| b.iter(|| {
+        let result = schnorr_optimized_jacobi_batch_verify(&messages, &pub_keys, &signatures);
         criterion::black_box(result);
         assert!(result);
     } ));

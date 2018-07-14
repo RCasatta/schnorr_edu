@@ -12,6 +12,7 @@ pub mod point;
 pub mod context;
 pub mod scalar;
 pub mod signature;
+pub mod optimized_product;
 
 use std::ops::{Mul,Sub,Add};
 use num_traits::One;
@@ -23,6 +24,8 @@ use scalar::*;
 use signature::*;
 use rand::prelude::*;
 use num_traits::Zero;
+use std::collections::BinaryHeap;
+use optimized_product::ProductTerm;
 
 type Msg = [u8;32];
 
@@ -178,6 +181,71 @@ pub fn schnorr_batch_verify(messages : &Vec<Msg>, pub_keys:  &Vec<Point>, signat
 }
 
 // https://www.deadalnix.me/2017/02/17/schnorr-signatures-for-not-so-dummies/
+#[allow(non_snake_case)]
+pub fn schnorr_optimized_jacobi_batch_verify(messages : &Vec<Msg>, pub_keys:  &Vec<Point>, signatures:  &Vec<Signature>) -> bool {
+    assert_eq!(messages.len(), pub_keys.len());
+    assert_eq!(messages.len(), signatures.len());
+    let mut R_vec= Vec::new();
+    let mut a_vec= Vec::new();
+    let mut e_vec= Vec::new();
+    let mut rng = thread_rng();
+    for i in 0..messages.len() {
+        let msg = &messages[i];
+        let P = &pub_keys[i];
+        let signature = &signatures[i];
+        if !P.on_curve() {
+            return false;
+        }
+        let e = concat_and_hash(&signature.Rx.to_32_bytes(), &P.as_bytes(), &msg[..]);
+        e_vec.push(e);
+        let c = signature.Rx.clone().pow(&CONTEXT.three).add(&CONTEXT.seven);
+        let y = c.pow(&CONTEXT.p_add1_div4);
+        if y.pow(&CONTEXT.two) != c {
+            return false;
+        }
+        R_vec.push(  JacobianPoint::from(Point{x: signature.Rx.clone(), y} ));
+        let a = if i == 0 { ScalarN(BigUint::one()) } else { rng.gen::<ScalarN>() };
+        a_vec.push(a);
+    }
+
+    //Fail if (s1 + a2s2 + ... + ausu)G ≠ R1 + a2R2 + ... + auRu + e1P1 + (a2e2)P2 + ... + (aueu)Pu
+    let mut coeff= ScalarN(BigUint::zero());
+    let mut inner_product : Vec<ProductTerm> = Vec::new();
+    for i in 0..messages.len() {
+        let signature = &signatures[i];
+        let R = &R_vec[i];
+        let a = &a_vec[i];
+        let e = &e_vec[i];
+        let P = &pub_keys[i];
+
+        coeff = coeff.add( a.to_owned().mul(&signature.s) );
+        inner_product.push(ProductTerm{coeff: a.to_owned(), point: R.to_owned() });
+        inner_product.push(ProductTerm{coeff: a.to_owned().mul(e), point: JacobianPoint::from( P.to_owned() ) });
+    }
+    //inner_product.push(ProductTerm{coeff: coeff, point: CONTEXT.G_jacobian.clone() });
+
+    let mut inner_product : BinaryHeap<ProductTerm> = BinaryHeap::from(inner_product);
+
+    //let mut count = 0;
+    while inner_product.len()>1 {
+        let t0 = inner_product.pop().unwrap();
+        let t1 = inner_product.pop().unwrap();
+        //count+=1;
+        inner_product.push(ProductTerm{coeff: t1.coeff.clone(), point: jacobian_point_add(Some(t0.point.clone()),Some(t1.point.clone())).unwrap() });
+        //println!("t0.coeff {} t1.coeff {}, t0.coeff-t1.coeff: {}",t0.coeff,t1.coeff, t0.coeff-t1.coeff);
+        if t0.coeff != t1.coeff {
+            inner_product.push(ProductTerm{coeff: t0.coeff-t1.coeff, point: t0.point });
+        }
+    }
+    //println!("total iteration {}",count);
+    let last = inner_product.pop().unwrap();
+    let right = jacobian_point_mul(last.point, last.coeff).unwrap();
+    let left = CONTEXT.G_jacobian.clone().mul(&coeff);
+
+    left == right
+}
+
+
 
 
 #[allow(non_snake_case)]
@@ -374,7 +442,7 @@ mod tests {
             pub_keys.push(pub_key);
             signatures.push(signature);
         }
-
+        assert!(schnorr_optimized_jacobi_batch_verify(&messages, &pub_keys, &signatures));
         assert!(schnorr_batch_verify(&messages, &pub_keys, &signatures));
         messages.pop();
         messages.push([0u8;32]);
