@@ -333,20 +333,6 @@ fn benchmark_point(c: &mut Criterion) {
             criterion::black_box(point);
         }));
 
-    c.bench_function("G JPoint mul medium",move |b|
-        b.iter(|| {
-            let sec_key : ScalarN = thread_rng().gen();
-            let point = generator_mul_medium_cache(&sec_key).unwrap();
-            criterion::black_box(point);
-        }));
-
-
-    c.bench_function("G JPoint mul small",move |b|
-        b.iter(|| {
-            let sec_key : ScalarN = thread_rng().gen();
-            let point = generator_mul_small_cache(&sec_key).unwrap();
-            criterion::black_box(point);
-        }));
 
     let points = points_orig.clone();
     c.bench_function("EC JPoint kP+lQ",move |b|
