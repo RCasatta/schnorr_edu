@@ -23,7 +23,7 @@ use std::collections::BinaryHeap;
 use util::term::Term;
 use scalar::ScalarN;
 use scalar::concat_and_hash;
-use point::{generator_mul, jacobian_point_add, jacobian_point_mul};
+use point::{generator_mul, jacobian_point_add};
 use point::{Point, JacobianPoint};
 use context::CONTEXT;
 use rand::thread_rng;
@@ -128,27 +128,23 @@ pub fn schnorr_batch_verify(messages : &Vec<Msg>, pub_keys:  &Vec<Point>, signat
         inner_product.push(Term {coeff: a.to_owned(), point: R.to_owned() });
         inner_product.push(Term {coeff: a.to_owned().mul(e), point: JacobianPoint::from( P.to_owned() ) });
     }
-    //inner_product.push(ProductTerm{coeff: coeff, point: CONTEXT.G_jacobian.clone() });
+    inner_product.push(Term{coeff: CONTEXT.n.clone().sub( coeff), point: CONTEXT.G_jacobian.clone() });  // -sG
 
     let mut inner_product : BinaryHeap<Term> = BinaryHeap::from(inner_product);
 
-    //let mut count = 0;
     while inner_product.len()>1 {
         let t0 = inner_product.pop().unwrap();
         let t1 = inner_product.pop().unwrap();
-        //count+=1;
-        inner_product.push(Term {coeff: t1.coeff.clone(), point: jacobian_point_add(Some(&t0.point), Some(&t1.point)).unwrap() });
-        //println!("t0.coeff {} t1.coeff {}, t0.coeff-t1.coeff: {}",t0.coeff,t1.coeff, t0.coeff-t1.coeff);
+        let option = jacobian_point_add(Some(&t0.point), Some(&t1.point));
+        if option.is_none() && inner_product.len() == 0 {
+            return true;
+        }
+        inner_product.push(Term {coeff: t1.coeff.clone(), point: option.unwrap() });
         if t0.coeff != t1.coeff {
             inner_product.push(Term {coeff: t0.coeff-t1.coeff, point: t0.point });
         }
     }
-    //println!("total iteration {}",count);
-    let last = inner_product.pop().unwrap();
-    let right = jacobian_point_mul(&last.point, &last.coeff).unwrap();
-    let left = generator_mul(&coeff).unwrap();
-
-    left == right
+    return false;
 }
 
 
