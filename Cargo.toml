@@ -2,6 +2,7 @@
 name = "schnorr_edu"
 version = "0.1.0"
 authors = ["Riccardo Casatta <riccardo@casatta.it>"]
+build = "build.rs"
 
 [dependencies]
 num-bigint = "0.2"

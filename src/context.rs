@@ -94,7 +94,7 @@ lazy_static! {
 lazy_static! {
     pub static ref BIG_CACHE: Vec<JacobianPoint> = {
         let mut vec = Vec::with_capacity(8160);
-        let mut f = File::open("big_cache.dat").unwrap();
+        let mut f = File::open("res/big_cache.dat").unwrap();
         let mut buffer = [0; 33];
         for _ in 0..8160 {
             f.read(&mut buffer).unwrap();
@@ -103,6 +103,21 @@ lazy_static! {
         vec
     };
 }
+
+
+lazy_static! {
+    pub static ref MEDIUM_CACHE: Vec<JacobianPoint> = {
+        let mut vec = Vec::with_capacity(960);
+        let mut f = File::open("res/medium_cache.dat").unwrap();
+        let mut buffer = [0; 33];
+        for _ in 0..960 {
+            f.read(&mut buffer).unwrap();
+            vec.push(JacobianPoint::from_bytes(&buffer).unwrap());
+        }
+        vec
+    };
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -117,7 +132,9 @@ mod tests {
 
     #[test]
     fn test_load_big() {
-        let option = BIG_CACHE.get(0);
+        let option = BIG_CACHE.get(0).unwrap();
+        assert_eq!(CONTEXT.G_jacobian , option.to_owned());
+
 
     }
 }

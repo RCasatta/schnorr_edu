@@ -4,6 +4,8 @@ use point::Point;
 use num_bigint::BigUint;
 use num_traits::One;
 use context::CONTEXT;
+use context::BIG_CACHE;
+use context::MEDIUM_CACHE;
 use context::JACOBIAN_DOUBLES_CACHE;
 use std::ops::{Mul,Sub,Add};
 use std::fmt;
@@ -57,7 +59,7 @@ impl PartialEq for JacobianPoint {
 impl Eq for JacobianPoint {}
 
 impl JacobianPoint {
-    pub fn double(self) -> JacobianPoint {
+    pub fn double(self) -> Option<JacobianPoint> {
         jacobian_point_double(self)
     }
     pub fn normalize(self) -> JacobianPoint {
@@ -88,16 +90,16 @@ impl Add for JacobianPoint {
 }
 
 
-pub fn jacobian_point_double(p : JacobianPoint) -> JacobianPoint {
+pub fn jacobian_point_double(p : JacobianPoint) -> Option<JacobianPoint> {
     if p.y.0.is_zero() {
-        println!("POINT_AT_INFINITY");
+        return None;
     }
     let s = CONTEXT.four.clone().mul(&p.x).mul( &p.y.clone().pow(&CONTEXT.two) );
     let m = CONTEXT.three.clone().mul( &p.x.clone().pow(&CONTEXT.two));
     let x = m.clone().pow(&CONTEXT.two).sub( &s.clone().mul(&CONTEXT.two));
     let y = m.clone().mul( &s.sub(&x) ).sub( &CONTEXT.eight.clone().mul(&p.y.clone().pow(&CONTEXT.four)));
     let z = CONTEXT.two.clone().mul(&p.y).mul(&p.z);
-    JacobianPoint{x,y,z}
+    Some(JacobianPoint{x,y,z})
 }
 
 pub fn jacobian_point_add(p1 : Option<JacobianPoint>, p2 : Option<JacobianPoint>) -> Option<JacobianPoint> {
@@ -114,7 +116,7 @@ pub fn jacobian_point_add(p1 : Option<JacobianPoint>, p2 : Option<JacobianPoint>
 
             if u1==u2 {
                 if s1==s2 {
-                    return Some(jacobian_point_double(p1));
+                    return jacobian_point_double(p1);
                 } else {
                     return None;
                 }
@@ -134,6 +136,40 @@ pub fn jacobian_point_add(p1 : Option<JacobianPoint>, p2 : Option<JacobianPoint>
 }
 
 pub fn generator_mul(n : &ScalarN) -> Option<JacobianPoint> {
+    let mut acc : Option<JacobianPoint> = None;
+    for (i,byte) in n.0.to_bytes_le().iter().enumerate() {
+        if byte != &0u8 {
+            let index = i * 255usize + (byte - 1u8) as usize;
+            acc = jacobian_point_add(acc, Some(BIG_CACHE[index].to_owned()));
+        }
+    }
+    acc
+}
+
+
+pub fn generator_mul_medium_cache(n : &ScalarN) -> Option<JacobianPoint> {
+    let mut acc : Option<JacobianPoint> = None;
+    for (i,byte) in n.0.to_bytes_le().iter().enumerate() {
+        if byte != &0u8 {
+            let start = i * 30 - 1;
+            let lower  = (byte & 0x0F) as usize;
+            let higher = ((byte & 0xF0) >>4) as usize;
+
+            if lower != 0usize {
+                let lower_index  = start + lower;
+                acc = jacobian_point_add(acc, Some(MEDIUM_CACHE[lower_index].clone()));
+            }
+            if higher != 0usize {
+                let higher_index = start + 15 + higher;
+                acc = jacobian_point_add(acc, Some(MEDIUM_CACHE[higher_index].clone()));
+            }
+        }
+    }
+    acc
+}
+
+
+pub fn generator_mul_small_cache(n : &ScalarN) -> Option<JacobianPoint> {
     let n = &n.0;
     let mut acc : Option<JacobianPoint> = None;
     let mut exponent = BigUint::one();
@@ -154,7 +190,7 @@ pub fn jacobian_point_mul( P: JacobianPoint, n : ScalarN) -> Option<JacobianPoin
 
     loop {
         if acc.is_some() {
-            acc = Some(acc.unwrap().double());
+            acc = acc.unwrap().double();
         }
         if !(&n.0 & &exponent).is_zero() {
             acc = jacobian_point_add(acc, Some(P.clone()));
@@ -173,6 +209,7 @@ mod tests {
     use super::*;
     use context::CONTEXT;
     use point::point::point_add;
+    use rand::prelude::*;
 
     #[test]
     fn test_conversion() {
@@ -196,6 +233,24 @@ mod tests {
 
         let g3_generator_mul = generator_mul(&three).unwrap();
         assert_eq!(g3_jac, g3_generator_mul);
+
+        let g3_medium_cache = generator_mul_medium_cache(&three).unwrap();
+        assert_eq!(g3_jac, g3_medium_cache);
+    }
+
+    #[test]
+    fn test_generator_mul() {
+        let n : ScalarN = thread_rng().gen();
+        let mul_big_cache = generator_mul(&n);
+        let mul_g = jacobian_point_mul(CONTEXT.G_jacobian.clone(), n.clone());
+
+        assert_eq!(mul_big_cache, mul_g);
+
+        let mul_small_cache = generator_mul_small_cache(&n);
+        assert_eq!(mul_small_cache, mul_g);
+
+        let mul_medium_cache = generator_mul_medium_cache(&n);
+        assert_eq!(mul_medium_cache, mul_g);
 
     }
 }

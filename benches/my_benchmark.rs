@@ -282,6 +282,7 @@ fn benchmark_point(c: &mut Criterion) {
             criterion::black_box(point);
         }));
 
+
     let mut points_orig = Vec::new();
     let mut current = None;
     for _ in 0..total {
@@ -309,7 +310,7 @@ fn benchmark_point(c: &mut Criterion) {
         }));
 
     let points = points_orig.clone();
-    c.bench_function("EC Jacobian Point multiplication",move |b|
+    c.bench_function("EC Jacobian Point mul",move |b|
         b.iter(|| {
             let sec_key : ScalarN = thread_rng().gen();
             let a = thread_rng().choose(&points).unwrap();;
@@ -317,14 +318,27 @@ fn benchmark_point(c: &mut Criterion) {
             criterion::black_box(point);
         }));
 
-    c.bench_function("G Point multiplication",move |b|
+    c.bench_function("G JPoint mul big",move |b|
         b.iter(|| {
             let sec_key : ScalarN = thread_rng().gen();
             let point = generator_mul(&sec_key).unwrap();
             criterion::black_box(point);
         }));
 
+    c.bench_function("G JPoint mul medium",move |b|
+        b.iter(|| {
+            let sec_key : ScalarN = thread_rng().gen();
+            let point = generator_mul_medium_cache(&sec_key).unwrap();
+            criterion::black_box(point);
+        }));
 
+
+    c.bench_function("G JPoint mul small",move |b|
+        b.iter(|| {
+            let sec_key : ScalarN = thread_rng().gen();
+            let point = generator_mul_small_cache(&sec_key).unwrap();
+            criterion::black_box(point);
+        }));
 
     let points = points_orig.clone();
     c.bench_function("EC JPoint kP+lQ",move |b|

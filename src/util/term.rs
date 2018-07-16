@@ -3,56 +3,56 @@ use point::JacobianPoint;
 use std::cmp::Ordering;
 
 #[derive(Debug)]
-pub struct ProductTerm {
+pub struct Term {
     pub coeff: ScalarN,
     pub point: JacobianPoint,
 }
 
 
-impl Ord for ProductTerm {
-    fn cmp(&self, other: &ProductTerm) -> Ordering {
+impl Ord for Term {
+    fn cmp(&self, other: &Term) -> Ordering {
         self.coeff.0.cmp(&other.coeff.0)
     }
 }
 
-impl PartialOrd for ProductTerm {
-    fn partial_cmp(&self, other: &ProductTerm) -> Option<Ordering> {
+impl PartialOrd for Term {
+    fn partial_cmp(&self, other: &Term) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl PartialEq for ProductTerm {
-    fn eq(&self, other: &ProductTerm) -> bool {
+impl PartialEq for Term {
+    fn eq(&self, other: &Term) -> bool {
         self.coeff == other.coeff
     }
 }
 
-impl Eq for ProductTerm {}
+impl Eq for Term {}
 
 #[cfg(test)]
 mod tests {
     use std::collections::BinaryHeap;
     use scalar::ScalarN;
-    use optimized_product::ProductTerm;
+    use util::term::Term;
     use num_bigint::BigUint;
     use num_traits::One;
     use context::CONTEXT;
     use std::ops::Add;
 
     #[test]
-    fn test_musig() {
+    fn test_heap() {
         let mut heap = BinaryHeap::new();
         let one = ScalarN(BigUint::one());
         let two = one.clone().add(one.clone());
         let three = two.clone().add(one.clone());
         let five = two.clone().add(three.clone());
-        let a = ProductTerm{coeff: one.clone(), point: CONTEXT.G_jacobian.clone() };
+        let a = Term {coeff: one.clone(), point: CONTEXT.G_jacobian.clone() };
         heap.push(a);
-        let a = ProductTerm{coeff: two, point: CONTEXT.G_jacobian.clone() };
+        let a = Term {coeff: two, point: CONTEXT.G_jacobian.clone() };
         heap.push(a);
-        let a = ProductTerm{coeff: five, point: CONTEXT.G_jacobian.clone() };
+        let a = Term {coeff: five, point: CONTEXT.G_jacobian.clone() };
         heap.push(a);
-        let a = ProductTerm{coeff: three, point: CONTEXT.G_jacobian.clone() };
+        let a = Term {coeff: three, point: CONTEXT.G_jacobian.clone() };
         heap.push(a);
 
     }

@@ -11,9 +11,7 @@ extern crate crypto;
 pub mod point;
 pub mod context;
 pub mod scalar;
-pub mod signature;
-pub mod optimized_product;
-pub mod shamir;
+pub mod util;
 
 use std::ops::{Mul,Sub,Add};
 use num_traits::One;
@@ -22,11 +20,11 @@ use point::point::*;
 use point::jacobian_point::*;
 use context::*;
 use scalar::*;
-use signature::*;
+use util::signature::*;
 use rand::prelude::*;
 use num_traits::Zero;
 use std::collections::BinaryHeap;
-use optimized_product::ProductTerm;
+use util::term::Term;
 
 type Msg = [u8;32];
 
@@ -211,7 +209,7 @@ pub fn schnorr_optimized_jacobi_batch_verify(messages : &Vec<Msg>, pub_keys:  &V
 
     //Fail if (s1 + a2s2 + ... + ausu)G ≠ R1 + a2R2 + ... + auRu + e1P1 + (a2e2)P2 + ... + (aueu)Pu
     let mut coeff= ScalarN(BigUint::zero());
-    let mut inner_product : Vec<ProductTerm> = Vec::new();
+    let mut inner_product : Vec<Term> = Vec::new();
     for i in 0..messages.len() {
         let signature = &signatures[i];
         let R = &R_vec[i];
@@ -220,22 +218,22 @@ pub fn schnorr_optimized_jacobi_batch_verify(messages : &Vec<Msg>, pub_keys:  &V
         let P = &pub_keys[i];
 
         coeff = coeff.add( a.to_owned().mul(&signature.s) );
-        inner_product.push(ProductTerm{coeff: a.to_owned(), point: R.to_owned() });
-        inner_product.push(ProductTerm{coeff: a.to_owned().mul(e), point: JacobianPoint::from( P.to_owned() ) });
+        inner_product.push(Term {coeff: a.to_owned(), point: R.to_owned() });
+        inner_product.push(Term {coeff: a.to_owned().mul(e), point: JacobianPoint::from( P.to_owned() ) });
     }
     //inner_product.push(ProductTerm{coeff: coeff, point: CONTEXT.G_jacobian.clone() });
 
-    let mut inner_product : BinaryHeap<ProductTerm> = BinaryHeap::from(inner_product);
+    let mut inner_product : BinaryHeap<Term> = BinaryHeap::from(inner_product);
 
     //let mut count = 0;
     while inner_product.len()>1 {
         let t0 = inner_product.pop().unwrap();
         let t1 = inner_product.pop().unwrap();
         //count+=1;
-        inner_product.push(ProductTerm{coeff: t1.coeff.clone(), point: jacobian_point_add(Some(t0.point.clone()),Some(t1.point.clone())).unwrap() });
+        inner_product.push(Term {coeff: t1.coeff.clone(), point: jacobian_point_add(Some(t0.point.clone()), Some(t1.point.clone())).unwrap() });
         //println!("t0.coeff {} t1.coeff {}, t0.coeff-t1.coeff: {}",t0.coeff,t1.coeff, t0.coeff-t1.coeff);
         if t0.coeff != t1.coeff {
-            inner_product.push(ProductTerm{coeff: t0.coeff-t1.coeff, point: t0.point });
+            inner_product.push(Term {coeff: t0.coeff-t1.coeff, point: t0.point });
         }
     }
     //println!("total iteration {}",count);
