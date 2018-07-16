@@ -4,7 +4,6 @@ use point::Point;
 use std::ops::Sub;
 use std::ops::Add;
 use std::ops::Div;
-use data_encoding::HEXLOWER;
 use scalar::ScalarN;
 use scalar::ScalarP;
 use num_traits::One;
@@ -70,49 +69,13 @@ impl Default for Context {
 }
 
 lazy_static! {
-    pub static ref AFFINES_DOUBLES_CACHE: Vec<Point> = {  // I can't initialize [Point;256]
-        let mut cache = Vec::with_capacity(256);
-        let lines = include_str!("doubles_cache.in").lines();
-        for line in lines {
-            cache.push(Point::from_bytes(&HEXLOWER.decode(line.as_bytes()).unwrap()).unwrap());
-        }
-        cache
-    };
-}
-
-lazy_static! {
-    pub static ref JACOBIAN_DOUBLES_CACHE: Vec<JacobianPoint> = {
-        let mut cache = Vec::with_capacity(256);
-        let lines = include_str!("doubles_cache.in").lines();
-        for line in lines {
-            cache.push(JacobianPoint::from(Point::from_bytes(&HEXLOWER.decode(line.as_bytes()).unwrap()).unwrap()));
-        }
-        cache
-    };
-}
-
-lazy_static! {
-    pub static ref BIG_CACHE: Vec<JacobianPoint> = {
+    pub static ref G_MUL_CACHE: Vec<JacobianPoint> = {
         let mut vec = Vec::with_capacity(8160);
-        let mut f = File::open("res/big_cache.dat").unwrap();
-        let mut buffer = [0; 33];
+        let mut f = File::open("res/g_mul_cache.dat").unwrap();
+        let mut buffer = [0; 64];
         for _ in 0..8160 {
             f.read(&mut buffer).unwrap();
-            vec.push(JacobianPoint::from_bytes(&buffer).unwrap());
-        }
-        vec
-    };
-}
-
-
-lazy_static! {
-    pub static ref MEDIUM_CACHE: Vec<JacobianPoint> = {
-        let mut vec = Vec::with_capacity(960);
-        let mut f = File::open("res/medium_cache.dat").unwrap();
-        let mut buffer = [0; 33];
-        for _ in 0..960 {
-            f.read(&mut buffer).unwrap();
-            vec.push(JacobianPoint::from_bytes(&buffer).unwrap());
+            vec.push(JacobianPoint::from_uncompressed_bytes(&buffer).unwrap());
         }
         vec
     };
@@ -132,7 +95,7 @@ mod tests {
 
     #[test]
     fn test_load_big() {
-        let option = BIG_CACHE.get(0).unwrap();
+        let option = G_MUL_CACHE.get(0).unwrap();
         assert_eq!(CONTEXT.G_jacobian , option.to_owned());
 
 

@@ -5,7 +5,6 @@ use num_integer::Integer;
 use context::CONTEXT;
 use std::ops::{Mul,Sub,Add};
 use num_traits::One;
-use context::AFFINES_DOUBLES_CACHE;
 use scalar::ScalarN;
 use scalar::ScalarP;
 use point::JacobianPoint;
@@ -63,6 +62,13 @@ impl Point {
         res
     }
 
+    pub fn as_uncompressed_bytes(&self) -> [u8;64] {
+        let mut res = [0u8;64];
+        res[..32].copy_from_slice(&self.x.to_32_bytes()[..]);
+        res[32..].copy_from_slice(&self.y.to_32_bytes()[..]);
+        res
+    }
+
     pub fn from_bytes(bytes : &[u8]) -> Option<Self> {
         if bytes.len()!=33 {
             return None;
@@ -75,6 +81,16 @@ impl Point {
         if ( bytes[0]==0x02 && y.0.is_odd() ) || ( bytes[0]==0x03 && y.0.is_even() ) {
             y = CONTEXT.p.clone().sub(&y);
         }
+        Some(Point {x,y})
+    }
+
+
+    pub fn from_uncompressed_bytes(bytes : &[u8]) -> Option<Self> {
+        if bytes.len()!=64 {
+            return None;
+        }
+        let x =  ScalarP::new(BigUint::from_bytes_be(&bytes[..32]));
+        let y =  ScalarP::new(BigUint::from_bytes_be(&bytes[32..]));
         Some(Point {x,y})
     }
 
@@ -101,9 +117,8 @@ impl Add for Point {
 pub fn point_mul(mut p: Point, n : ScalarN) -> Option<Point> {
     let mut r : Option<Point> = None;
     let mut n = n.0;
-    let is_g = p == CONTEXT.G;
 
-    for i in 0..256usize {
+    loop {
         let (ris, rem) = n.div_rem(&CONTEXT.two.0);
 
         if rem.is_one() {
@@ -112,13 +127,9 @@ pub fn point_mul(mut p: Point, n : ScalarN) -> Option<Point> {
         if ris.is_zero() {
             return r;
         }
-        p = match is_g {
-            true  => AFFINES_DOUBLES_CACHE[i+1].clone(),
-            false => point_add(Some(p.clone()),Some(p)).unwrap(),
-        };
+        p = point_add(Some(p.clone()),Some(p)).unwrap();
         n = ris;
     }
-    None
 }
 
 pub fn point_add(p1 : Option<Point>, p2 : Option<Point>) -> Option<Point> {

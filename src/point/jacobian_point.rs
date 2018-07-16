@@ -4,9 +4,7 @@ use point::Point;
 use num_bigint::BigUint;
 use num_traits::One;
 use context::CONTEXT;
-use context::BIG_CACHE;
-use context::MEDIUM_CACHE;
-use context::JACOBIAN_DOUBLES_CACHE;
+use context::G_MUL_CACHE;
 use std::ops::{Mul,Sub,Add};
 use std::fmt;
 use num_traits::Zero;
@@ -75,6 +73,18 @@ impl JacobianPoint {
         }
         Some(JacobianPoint::from( Point::from_bytes(bytes).unwrap() ))
     }
+
+    pub fn as_uncompressed_bytes(self) -> [u8;64] {
+        Point::from(self).as_uncompressed_bytes()
+    }
+
+    pub fn from_uncompressed_bytes(bytes : &[u8]) -> Option<Self> {
+        if bytes.len()!=64 {
+            return None;
+        }
+        Some(JacobianPoint::from( Point::from_uncompressed_bytes(bytes).unwrap() ))
+    }
+
     pub fn mul(self, n : &ScalarN) -> Self {
         jacobian_point_mul(self, n.to_owned()).unwrap()
     }
@@ -181,46 +191,9 @@ pub fn generator_mul(n : &ScalarN) -> Option<JacobianPoint> {
     for (i,byte) in n.0.to_bytes_le().iter().enumerate() {
         if byte != &0u8 {
             let index = i * 255usize + (byte - 1u8) as usize;
-            let point = BIG_CACHE[index].to_owned();
+            let point = G_MUL_CACHE[index].to_owned();
             acc = jacobian_point_add(acc, Some(point));
         }
-    }
-    acc
-}
-
-
-pub fn generator_mul_medium_cache(n : &ScalarN) -> Option<JacobianPoint> {
-    let mut acc : Option<JacobianPoint> = None;
-    for (i,byte) in n.0.to_bytes_le().iter().enumerate() {
-        if byte != &0u8 {
-            let start = i * 30 - 1;
-            let lower  = (byte & 0x0F) as usize;
-            let higher = ((byte & 0xF0) >>4) as usize;
-
-            if lower != 0usize {
-                let lower_index  = start + lower;
-                acc = jacobian_point_add(acc, Some(MEDIUM_CACHE[lower_index].clone()));
-            }
-            if higher != 0usize {
-                let higher_index = start + 15 + higher;
-                acc = jacobian_point_add(acc, Some(MEDIUM_CACHE[higher_index].clone()));
-            }
-        }
-    }
-    acc
-}
-
-
-pub fn generator_mul_small_cache(n : &ScalarN) -> Option<JacobianPoint> {
-    let n = &n.0;
-    let mut acc : Option<JacobianPoint> = None;
-    let mut exponent = BigUint::one();
-
-    for i in 0..256usize {
-        if !(n & &exponent).is_zero() {
-            acc = jacobian_point_add(acc, Some(JACOBIAN_DOUBLES_CACHE[i].clone()));
-        }
-        exponent <<= 1usize;
     }
     acc
 }
@@ -276,8 +249,6 @@ mod tests {
         let g3_generator_mul = generator_mul(&three).unwrap();
         assert_eq!(g3_jac, g3_generator_mul);
 
-        let g3_medium_cache = generator_mul_medium_cache(&three).unwrap();
-        assert_eq!(g3_jac, g3_medium_cache);
     }
 
     #[test]
@@ -287,12 +258,14 @@ mod tests {
         let mul_g = jacobian_point_mul(CONTEXT.G_jacobian.clone(), n.clone());
 
         assert_eq!(mul_big_cache, mul_g);
+    }
 
-        let mul_small_cache = generator_mul_small_cache(&n);
-        assert_eq!(mul_small_cache, mul_g);
-
-        let mul_medium_cache = generator_mul_medium_cache(&n);
-        assert_eq!(mul_medium_cache, mul_g);
-
+    #[test]
+    fn test_serialize() {
+        let x = CONTEXT.G.clone().as_uncompressed_bytes();
+        let y = CONTEXT.G_jacobian.clone().as_bytes();
+        let a = JacobianPoint::from_uncompressed_bytes(&x).unwrap();
+        let b = Point::from_bytes(&y).unwrap();
+        assert_eq!(b, Point::from(a));
     }
 }
