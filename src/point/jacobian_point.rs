@@ -102,12 +102,53 @@ pub fn jacobian_point_double(p : JacobianPoint) -> Option<JacobianPoint> {
     Some(JacobianPoint{x,y,z})
 }
 
+pub fn mixed_point_add(p1 : Option<JacobianPoint>, p2 : Option<Point>) -> Option<JacobianPoint> {
+    match (p1,p2) {
+        (None, None) => None,
+        (Some(p1), None) => Some(p1.clone()),
+        (None, Some(p2)) => Some(JacobianPoint::from( p2.clone())),
+        (Some(p1), Some(p2)) => {
+
+            let u1 = p1.x.clone();
+            let u2 = p2.x.clone().mul(&p1.z.clone().pow(&CONTEXT.two));
+
+            let s1 = p1.y.clone();
+            let s2 = p2.y.clone().mul(&p1.z.clone().pow(&CONTEXT.three));
+
+            if u1==u2 {
+                if s1==s2 {
+                    return jacobian_point_double(p1);
+                } else {
+                    return None;
+                }
+            }
+            let h = u2.sub(&u1);
+            let r = s2.sub(&s1);
+            let x3 = r.pow(&CONTEXT.two)
+                .sub( &h.pow(&CONTEXT.three) )
+                .sub( &u1.clone().mul(&CONTEXT.two).mul(&h.pow(&CONTEXT.two) ) );
+
+            let y3 = r.mul( &u1.mul(&h.pow(&CONTEXT.two) ).sub(&x3) )
+                .sub(&s1.mul(&h.pow(&CONTEXT.three)));
+            let z3 = h.mul(&p1.z);
+            Some(JacobianPoint{x:x3,y:y3,z:z3})
+        }
+    }
+}
+
 pub fn jacobian_point_add(p1 : Option<JacobianPoint>, p2 : Option<JacobianPoint>) -> Option<JacobianPoint> {
     match (p1,p2) {
         (None, None) => None,
         (Some(p1), None) => Some(p1.clone()),
         (None, Some(p2)) => Some(p2.clone()),
         (Some(p1), Some(p2)) => {
+            if p1.z.0.is_one() {
+                return mixed_point_add(Some(p2), Some(Point::from(p1)));
+            }
+            if p2.z.0.is_one() {
+                return mixed_point_add(Some(p1), Some(Point::from(p2)));
+            }
+
             let u1 = p1.x.clone().mul(&p2.z.clone().pow(&CONTEXT.two));
             let u2 = p2.x.clone().mul(&p1.z.clone().pow(&CONTEXT.two));
 
@@ -140,7 +181,8 @@ pub fn generator_mul(n : &ScalarN) -> Option<JacobianPoint> {
     for (i,byte) in n.0.to_bytes_le().iter().enumerate() {
         if byte != &0u8 {
             let index = i * 255usize + (byte - 1u8) as usize;
-            acc = jacobian_point_add(acc, Some(BIG_CACHE[index].to_owned()));
+            let point = BIG_CACHE[index].to_owned();
+            acc = jacobian_point_add(acc, Some(point));
         }
     }
     acc

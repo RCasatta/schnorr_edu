@@ -32,6 +32,9 @@ impl Default for Point {
 impl From<JacobianPoint> for Point {
     fn from(j: JacobianPoint) -> Self {
         //(X / Z^2, Y / Z^3).
+        if j.z.0.is_one() {
+            return Point{x:j.x,y:j.y}
+        }
         let x = j.x.mul( &j.z.pow( &CONTEXT.two ).inv()  );
         let y = j.y.mul( &j.z.pow( &CONTEXT.three ).inv() );
         Point{x,y}

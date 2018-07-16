@@ -8,46 +8,34 @@ extern crate data_encoding;
 extern crate rand;
 extern crate crypto;
 
-pub mod point;
 pub mod context;
+pub mod point;
 pub mod scalar;
 pub mod util;
+pub mod old;
 
 use std::ops::{Mul,Sub,Add};
 use num_traits::One;
 use num_bigint::BigUint;
-use point::point::*;
-use point::jacobian_point::*;
-use context::*;
-use scalar::*;
-use util::signature::*;
-use rand::prelude::*;
+use util::signature::Signature;
 use num_traits::Zero;
 use std::collections::BinaryHeap;
 use util::term::Term;
+use scalar::ScalarN;
+use scalar::concat_and_hash;
+use point::{generator_mul, jacobian_point_add, jacobian_point_mul};
+use point::{Point, JacobianPoint};
+use context::CONTEXT;
+use rand::thread_rng;
+use rand::Rng;
 
 type Msg = [u8;32];
 
 // https://github.com/sipa/bips/blob/bip-schnorr/bip-schnorr.mediawiki
 
+
 #[allow(non_snake_case)]
 pub fn schnorr_sign(msg : &Msg, sec_key: &ScalarN) -> Signature {
-    let sec_key_bytes = sec_key.to_32_bytes();
-    let mut k = concat_and_hash(&sec_key_bytes, msg, &vec![]);
-    let R = CONTEXT.G.clone().mul( &k);
-    if !R.y.is_jacobi() {
-        k = CONTEXT.n.clone().sub(k);
-    }
-    let Rx = R.x.to_32_bytes();
-    let dG = CONTEXT.G.clone().mul(sec_key).as_bytes();
-    let e = concat_and_hash(&Rx, &dG, msg);
-    let s = k.add(e.mul(sec_key));
-
-    Signature::new(R.x,s)
-}
-
-#[allow(non_snake_case)]
-pub fn schnorr_jacobi_sign(msg : &Msg, sec_key: &ScalarN) -> Signature {
     let sec_key_bytes = sec_key.to_32_bytes();
     let mut k = concat_and_hash(&sec_key_bytes, msg, &vec![]);
     let R_jacobian = generator_mul(&k).unwrap();
@@ -65,7 +53,7 @@ pub fn schnorr_jacobi_sign(msg : &Msg, sec_key: &ScalarN) -> Signature {
 }
 
 #[allow(non_snake_case)]
-pub fn schnorr_jacobi_verify(msg : &Msg, pub_key: &Point, signature: &Signature) -> bool {
+pub fn schnorr_verify(msg : &Msg, pub_key: &Point, signature: &Signature) -> bool {
     if !pub_key.on_curve() {
         return false;
     }
@@ -98,90 +86,9 @@ pub fn schnorr_jacobi_verify(msg : &Msg, pub_key: &Point, signature: &Signature)
 }
 
 
-#[allow(non_snake_case)]
-pub fn schnorr_verify(msg : &Msg, pub_key: &Point, signature: &Signature) -> bool {
-    if !pub_key.on_curve() {
-        return false;
-    }
-
-    let signature_bytes = signature.as_bytes();
-    let r = BigUint::from_bytes_be(&signature_bytes[..32]);
-    let s = BigUint::from_bytes_be(&signature_bytes[32..]);
-    if r >= CONTEXT.p.0 || s >= CONTEXT.n.0 {  // TODO Probably can't happen since ScalarN always < N
-        return false;
-    }
-    let e = concat_and_hash(&signature_bytes[..32], &pub_key.as_bytes()[..], msg);
-    let a = point_mul( CONTEXT.G.clone(),signature.s.clone() ) ;
-    let b = point_mul( pub_key.to_owned(), CONTEXT.n.clone().sub(e)  );
-    let R = point_add(a,b);
-
-    if R.is_none() {
-        return false;
-    }
-    let R = R.unwrap();
-
-    if R.x != signature.Rx {
-        return false;
-    }
-
-    if !R.y.is_jacobi() {
-        return false
-    }
-
-    true
-}
-
-#[allow(non_snake_case)]
-pub fn schnorr_batch_verify(messages : &Vec<Msg>, pub_keys:  &Vec<Point>, signatures:  &Vec<Signature>) -> bool {
-    assert_eq!(messages.len(), pub_keys.len());
-    assert_eq!(messages.len(), signatures.len());
-    let mut R_vec= Vec::new();
-    let mut a_vec= Vec::new();
-    let mut e_vec= Vec::new();
-    let mut rng = thread_rng();
-    for i in 0..messages.len() {
-        let msg = &messages[i];
-        let P = &pub_keys[i];
-        let signature = &signatures[i];
-        if !P.on_curve() {
-            return false;
-        }
-        let e = concat_and_hash(&signature.Rx.to_32_bytes(), &P.as_bytes(), &msg[..]);
-        e_vec.push(e);
-        let c = signature.Rx.clone().pow(&CONTEXT.three).add(&CONTEXT.seven);
-        let y = c.pow(&CONTEXT.p_add1_div4);
-        if y.pow(&CONTEXT.two) != c {
-            return false;
-        }
-        R_vec.push( Point{x: signature.Rx.clone(), y});
-        let a = if i == 0 { ScalarN(BigUint::one()) } else { rng.gen::<ScalarN>() };
-        a_vec.push(a);
-    }
-
-    let mut coeff= ScalarN(BigUint::zero());
-    let mut R_point_sum = None;
-    let mut P_point_sum = None;
-    for i in 0..messages.len() {
-        let signature = &signatures[i];
-        let R = &R_vec[i];
-        let a = &a_vec[i];
-        let e = &e_vec[i];
-        let P = &pub_keys[i];
-
-        coeff = coeff.add( a.to_owned().mul(&signature.s) );
-        R_point_sum = point_add(point_mul(R.to_owned(), a.to_owned() ), R_point_sum);
-        P_point_sum = point_add(point_mul(P.to_owned(), a.to_owned().mul(e) ),P_point_sum);
-    }
-
-    let left = CONTEXT.G.clone().mul(&coeff);
-    let right = point_add(R_point_sum, P_point_sum).unwrap();
-
-    left==right
-}
-
 // https://www.deadalnix.me/2017/02/17/schnorr-signatures-for-not-so-dummies/
 #[allow(non_snake_case)]
-pub fn schnorr_optimized_jacobi_batch_verify(messages : &Vec<Msg>, pub_keys:  &Vec<Point>, signatures:  &Vec<Signature>) -> bool {
+pub fn schnorr_batch_verify(messages : &Vec<Msg>, pub_keys:  &Vec<Point>, signatures:  &Vec<Signature>) -> bool {
     assert_eq!(messages.len(), pub_keys.len());
     assert_eq!(messages.len(), signatures.len());
     let mut R_vec= Vec::new();
@@ -246,167 +153,14 @@ pub fn schnorr_optimized_jacobi_batch_verify(messages : &Vec<Msg>, pub_keys:  &V
 
 
 
-
-#[allow(non_snake_case)]
-pub fn schnorr_jacobi_batch_verify(messages : &Vec<Msg>, pub_keys:  &Vec<Point>, signatures:  &Vec<Signature>) -> bool {
-    assert_eq!(messages.len(), pub_keys.len());
-    assert_eq!(messages.len(), signatures.len());
-    let mut R_vec= Vec::new();
-    let mut a_vec= Vec::new();
-    let mut e_vec= Vec::new();
-    let mut rng = thread_rng();
-    for i in 0..messages.len() {
-        let msg = &messages[i];
-        let P = &pub_keys[i];
-        let signature = &signatures[i];
-        if !P.on_curve() {
-            return false;
-        }
-        let e = concat_and_hash(&signature.Rx.to_32_bytes(), &P.as_bytes(), &msg[..]);
-        e_vec.push(e);
-        let c = signature.Rx.clone().pow(&CONTEXT.three).add(&CONTEXT.seven);
-        let y = c.pow(&CONTEXT.p_add1_div4);
-        if y.pow(&CONTEXT.two) != c {
-            return false;
-        }
-        R_vec.push(  JacobianPoint::from(Point{x: signature.Rx.clone(), y} ));
-        let a = if i == 0 { ScalarN(BigUint::one()) } else { rng.gen::<ScalarN>() };
-        a_vec.push(a);
-    }
-
-    let mut coeff= ScalarN(BigUint::zero());
-    let mut R_point_sum = None;
-    let mut P_point_sum = None;
-    //Fail if (s1 + a2s2 + ... + ausu)G ≠ R1 + a2R2 + ... + auRu + e1P1 + (a2e2)P2 + ... + (aueu)Pu
-    for i in 0..messages.len() {
-        let signature = &signatures[i];
-        let R = &R_vec[i];
-        let a = &a_vec[i];
-        let e = &e_vec[i];
-        let P = &pub_keys[i];
-
-        coeff = coeff.add( a.to_owned().mul(&signature.s) );
-        R_point_sum = jacobian_point_add(jacobian_point_mul(R.to_owned(), a.to_owned() ), R_point_sum);
-        P_point_sum = jacobian_point_add(jacobian_point_mul(JacobianPoint::from( P.to_owned()), a.to_owned().mul(e) ),P_point_sum);
-    }
-
-    let left = generator_mul(&coeff);
-    let right = jacobian_point_add(R_point_sum, P_point_sum);
-
-    left==right
-}
-
-
-// https://blockstream.com/2018/01/23/musig-key-aggregation-schnorr-signatures.html
-/*
-Call L = H(X1,X2,…)
-Call X the sum of all H(L,Xi)Xi
-Each signer chooses a random nonce ri, and shares Ri = riG with the other signers
-Call R the sum of the Ri points
-Each signer computes si = ri + H(X,R,m)H(L,Xi)xi
-The final signature is (R,s) where s is the sum of the si values
-Verification again satisfies sG = R + H(X,R,m)X
-*/
-
-// The following function is for test only,
-// obviously the real algo does not require all private keys in the same function
-// but it's instead interactive
-#[allow(non_snake_case)]
-pub fn musig(msg : &Msg, sec_keys:  &Vec<ScalarN>, is_new: bool) -> (Point, Signature, Point, bool) {
-    let total_signers = sec_keys.len();
-    assert!(total_signers >1);
-
-    let pub_keys : Vec<Point> = sec_keys.iter()
-        .map(|sec_key| CONTEXT.G.clone().mul(sec_key) )
-        .collect();
-
-    let pub_keys_bytes : Vec<[u8;33]> = pub_keys.iter()
-        .map(|pub_key| pub_key.as_bytes())
-        .collect();
-
-    let mut all_pub_keys_bytes = Vec::new();
-    pub_keys_bytes.iter()
-        .for_each(|el| all_pub_keys_bytes.extend(&el[..]));
-
-    // Call L = H(X1,X2,…)
-    let L = concat_and_hash(&all_pub_keys_bytes, &vec![], &vec![]);
-    //Call X the sum of all H(L,Xi)Xi
-    let mut X : Option<Point>= None;
-    for pub_key in pub_keys.iter() {
-        X = point_add(
-            X,
-            Some(pub_key.clone().mul( &concat_and_hash(&L.to_32_bytes(), &pub_key.as_bytes(), &vec![]))));
-    }
-    let X = X.unwrap();
-
-    let mut ris = Vec::new();
-    let mut Ris = Vec::new();
-    let mut R : Option<Point> = None;
-    // Each signer chooses a random nonce ri, and shares Ri = riG with the other signers
-    // Call R the sum of the Ri points
-    for _ in 0..total_signers {
-        let ri : ScalarN = thread_rng().gen();
-        let Ri = CONTEXT.G.clone().mul(&ri);
-        R = point_add(R, Some(Ri.clone()) );
-        Ris.push(Ri);
-        ris.push(ri);
-    }
-    let R = R.unwrap();
-
-
-    // Each signer computes si = ri + H(X,R,m)H(L,Xi)xi
-    // Let e = int(hash(bytes(r) || bytes(P) || m)) mod n.    // bip schnorr
-    let mut s = ScalarN(BigUint::zero());
-    let X_bytes = X.as_bytes();
-    for i in 0..total_signers {
-        let e = match is_new {
-            false => concat_and_hash( &X_bytes , &R.as_bytes(), msg ),
-            true => concat_and_hash( &R.x.to_32_bytes(), &X_bytes ,  msg ),
-        };
-
-        let si = ris[i].clone().add(
-            e.mul( &concat_and_hash(&L.to_32_bytes(), &pub_keys[i].as_bytes(), &vec![] ))
-                .mul( &sec_keys[i] )
-        );
-        s = s + si;
-    }
-
-    // TODO how to create R with the right convention?
-
-    (X, Signature::new(R.x.clone(), s), R.clone(), R.y.is_jacobi())
-}
-
-
 #[cfg(test)]
 mod tests {
     use rand::prelude::*;
     use num_bigint::BigUint;
     use super::*;
     use data_encoding::HEXUPPER;
-    use context::CONTEXT;
-
-    #[test]
-    fn test_musig() {
-        let mut sec_keys = Vec::new();
-        for _ in 0..5 {
-            sec_keys.push( thread_rng().gen::<ScalarN>());
-        }
-        let msg = [0u8; 32];
-        let (pub_key, signature, r,_) = musig(&msg, &sec_keys, false);
-
-        //let result = schnorr_verify(&msg, &combined_pub_key, &signature);
-
-        //Verification again satisfies sG = R + H(X,R,m)X
-        let left = CONTEXT.G.clone().mul( &signature.s );
-        let right = r.clone().add( pub_key.clone().mul(&concat_and_hash(&pub_key.as_bytes(),&r.as_bytes(),&msg ) ));
-        assert_eq!(left,right);
-
-        let (pub_key, signature, _, is_y_jacoby) = musig(&msg, &sec_keys, true);
-        if is_y_jacoby {  // until work on musig I can verify onlu if R.y is jacobi
-            let result = schnorr_verify(&msg, &pub_key, &signature);
-            assert!(result);
-        }
-    }
+    use scalar::vec_to_32_bytes;
+    use old;
 
 
     #[test]
@@ -414,7 +168,7 @@ mod tests {
         let sec_key = thread_rng().gen::<ScalarN>();
         let msg = [0u8;32];
         let sign1 = schnorr_sign(&msg, &sec_key);
-        let sign2 = schnorr_jacobi_sign(&msg,&sec_key);
+        let sign2 = schnorr_sign(&msg, &sec_key);
         assert_eq!(sign1, sign2);
     }
 
@@ -430,22 +184,22 @@ mod tests {
         for _ in 0..4 {
             rng.fill_bytes(&mut msg);
             let sec_key = rng.gen::<ScalarN>();
-            let pub_key = point_mul(CONTEXT.G.clone(), sec_key.clone()).unwrap();
+            let pub_key : Point = generator_mul(&sec_key).unwrap().into();
             let signature = schnorr_sign(&msg, &sec_key);
             let result = schnorr_verify(&msg, &pub_key, &signature);
             assert!(result);
-            let result = schnorr_jacobi_verify(&msg, &pub_key, &signature);
+            let result = old::schnorr_verify(&msg, &pub_key, &signature);
             assert!(result);
 
             messages.push(msg);
             pub_keys.push(pub_key);
             signatures.push(signature);
         }
-        assert!(schnorr_optimized_jacobi_batch_verify(&messages, &pub_keys, &signatures));
         assert!(schnorr_batch_verify(&messages, &pub_keys, &signatures));
+        assert!(old::schnorr_batch_verify(&messages, &pub_keys, &signatures));
         messages.pop();
         messages.push([0u8;32]);
-        assert!(!schnorr_batch_verify(&messages, &pub_keys, &signatures));
+        assert!(!old::schnorr_batch_verify(&messages, &pub_keys, &signatures));
     }
 
     #[test]
@@ -498,7 +252,7 @@ mod tests {
         fn test_vector( private : &str, public : &str, message : &str, signature : &str) {
             let sec_key_bytes = vec_to_32_bytes(&HEXUPPER.decode(private.as_bytes()).unwrap());
             let sec_key = ScalarN::new(BigUint::from_bytes_be(&sec_key_bytes));
-            let pub_key = point_mul(CONTEXT.G.clone(), sec_key.clone()).unwrap();
+            let pub_key : Point = generator_mul(&sec_key).unwrap().into();
             assert_eq!(HEXUPPER.encode( &pub_key.as_bytes()[..]), public);
             let message = vec_to_32_bytes( &HEXUPPER.decode(message.as_bytes()).unwrap() );
 

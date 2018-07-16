@@ -32,6 +32,9 @@ impl ScalarP {
         to_32_bytes(&self.0)
     }
     pub fn pow(&self, n: &ScalarP) -> Self {
+        /*if self.0 == BigUint::one() {
+            return ScalarP(BigUint::one());
+        }*/
         ScalarP(self.0.modpow(&n.0, &CONTEXT.p.0))
     }
     pub fn inv(&self) -> Self {

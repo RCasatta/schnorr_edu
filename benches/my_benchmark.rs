@@ -21,7 +21,9 @@ use schnorr_edu::scalar::*;
 use secp256k1::Secp256k1;
 use secp256k1::Message;
 use secp256k1::key::SecretKey;
-use schnorr_edu::shamir::shamirs_trick;
+use schnorr_edu::util::shamir::shamirs_trick;
+use num_traits::One;
+use schnorr_edu::old::schnorr_batch_verify;
 
 
 fn benchmark_biguint(c: &mut Criterion) {
@@ -40,6 +42,22 @@ fn benchmark_biguint(c: &mut Criterion) {
         let b =  rand::thread_rng().choose(&numbers).unwrap();
         let c =  rand::thread_rng().choose(&numbers).unwrap();
         let result = a.modpow(b, c);
+        criterion::black_box(result);
+    } ));
+
+    let numbers = numbers_orig.clone();
+    c.bench_function("ScalarP modpow one", move|b| b.iter(|| {
+        let a =  ScalarP(BigUint::one());
+        let b =  rand::thread_rng().choose(&numbers).unwrap();
+        let result = a.pow(&ScalarP(b.to_owned()));
+        criterion::black_box(result);
+    } ));
+
+    let numbers = numbers_orig.clone();
+    c.bench_function("ScalarP mul one", move|b| b.iter(|| {
+        let a =  ScalarP(BigUint::one());
+        let b =  rand::thread_rng().choose(&numbers).unwrap();
+        let result = a.mul(&ScalarP(b.to_owned()));
         criterion::black_box(result);
     } ));
 
@@ -138,9 +156,9 @@ fn benchmark_verify(c: &mut Criterion) {
 
     let signatures = signatures_orig.clone();
     let pub_keys = pub_keys_orig.clone();
-    c.bench_function("Schnorr jacobi verify",move |b| b.iter(|| {
+    c.bench_function("Schnorr affine verify",move |b| b.iter(|| {
         let i = thread_rng().gen_range(0usize, precomputed_signatures);
-        let result = schnorr_jacobi_verify(&msg, &pub_keys[i], &signatures[i]);
+        let result = old::schnorr_verify(&msg, &pub_keys[i], &signatures[i]);
         criterion::black_box(result);
         assert!(result);
     } ));
@@ -171,37 +189,27 @@ fn benchmark_batch_verify(c: &mut Criterion) {
     for _ in 0..precomputed_signatures {
         let sec_key = rng.gen();
         rng.fill_bytes(&mut msg);
-        let signature = schnorr_jacobi_sign(&msg,&sec_key);
+        let signature = schnorr_sign(&msg, &sec_key);
         let pub_key = point_mul(CONTEXT.G.clone(), sec_key).unwrap();
         signatures_orig.push(signature);
         pub_keys_orig.push(pub_key);
         messages_orig.push(msg);
     }
 
+    let signatures = signatures_orig.clone();
+    let pub_keys = pub_keys_orig.clone();
+    let messages = messages_orig.clone();
+    c.bench_function("Batch verify old ",move |b| b.iter(|| {
+        let result = old::schnorr_jacobi_batch_verify(&messages, &pub_keys, &signatures);
+        criterion::black_box(result);
+        assert!(result);
+    } ));
 
     let signatures = signatures_orig.clone();
     let pub_keys = pub_keys_orig.clone();
     let messages = messages_orig.clone();
     c.bench_function("Batch verify",move |b| b.iter(|| {
         let result = schnorr_batch_verify(&messages, &pub_keys, &signatures);
-        criterion::black_box(result);
-        assert!(result);
-    } ));
-
-    let signatures = signatures_orig.clone();
-    let pub_keys = pub_keys_orig.clone();
-    let messages = messages_orig.clone();
-    c.bench_function("Batch verify jacobi",move |b| b.iter(|| {
-        let result = schnorr_jacobi_batch_verify(&messages, &pub_keys, &signatures);
-        criterion::black_box(result);
-        assert!(result);
-    } ));
-
-    let signatures = signatures_orig.clone();
-    let pub_keys = pub_keys_orig.clone();
-    let messages = messages_orig.clone();
-    c.bench_function("Batch optimized verify jacobi",move |b| b.iter(|| {
-        let result = schnorr_optimized_jacobi_batch_verify(&messages, &pub_keys, &signatures);
         criterion::black_box(result);
         assert!(result);
     } ));
@@ -222,11 +230,11 @@ fn benchmark_sign(c: &mut Criterion) {
 
     let mut rng = thread_rng();
     let mut msg = [0u8;32];
-    c.bench_function("Schnorr jacobi sign",move |b|
+    c.bench_function("Schnorr affine sign",move |b|
         b.iter(|| {
             rng.fill_bytes(&mut msg);
             let sec_key= rng.gen();
-            let signature = schnorr_jacobi_sign(&msg, &sec_key);
+            let signature = old::schnorr_sign(&msg, &sec_key);
             criterion::black_box(signature);
 
         }));
@@ -343,26 +351,26 @@ fn benchmark_point(c: &mut Criterion) {
     let points = points_orig.clone();
     c.bench_function("EC JPoint kP+lQ",move |b|
         b.iter(|| {
-            let P = thread_rng().choose(&points).unwrap();
-            let Q = thread_rng().choose(&points).unwrap();
+            let p = thread_rng().choose(&points).unwrap();
+            let q = thread_rng().choose(&points).unwrap();
             let k : ScalarN = thread_rng().gen();
             let l : ScalarN = thread_rng().gen();
 
             let point = jacobian_point_add(
-                jacobian_point_mul(P.to_owned(), k),
-                jacobian_point_mul(Q.to_owned(), l));
+                jacobian_point_mul(p.to_owned(), k),
+                jacobian_point_mul(q.to_owned(), l));
             criterion::black_box(point);
         }));
 
     let points = points_orig.clone();
     c.bench_function("EC JPoint kP+lQ shamir",move |b|
         b.iter(|| {
-            let P = thread_rng().choose(&points).unwrap();
-            let Q = thread_rng().choose(&points).unwrap();
+            let p = thread_rng().choose(&points).unwrap();
+            let q = thread_rng().choose(&points).unwrap();
             let k : ScalarN = thread_rng().gen();
             let l : ScalarN = thread_rng().gen();
 
-            let point = shamirs_trick(k,P.to_owned(),l,Q.to_owned());
+            let point = shamirs_trick(k,p.to_owned(),l,q.to_owned());
             criterion::black_box(point);
         }));
 
@@ -370,8 +378,8 @@ fn benchmark_point(c: &mut Criterion) {
 
 criterion_group!{
     name = benches;
-    config = Criterion::default().sample_size(10);
-    //config = Criterion::default().sample_size(2).without_plots();
+    //config = Criterion::default().sample_size(10);
+    config = Criterion::default().sample_size(2).without_plots();
     targets = benchmark_biguint, benchmark_point, benchmark_verify, benchmark_batch_verify, benchmark_sign
 }
 
