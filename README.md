@@ -24,13 +24,12 @@ cargo test --release
 ## Benchmark
 
 When I say non efficient I really mean it!
-libsecp256k1 ECDSA which has comparable complexity AFAIK is about a thousand times faster!
+libsecp256k1 ECDSA which has comparable complexity AFAIK is about a 20 times faster!
 
 ```
 $ cargo bench
 ... 
-Schnorr verify          time:   [82.144 ms 84.999 ms 85.713 ms]                        
-Schnorr sign            time:   [43.060 ms 43.153 ms 43.176 ms]                       
+
 ...   
 ```
 

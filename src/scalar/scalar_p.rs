@@ -67,6 +67,15 @@ impl<'a> Mul<&'a ScalarP> for ScalarP {
         ScalarP::new(self.0.mul(&other.0) )
     }
 }
+
+impl<'a, 'b> Mul<&'b ScalarP> for &'a ScalarP {
+    type Output = ScalarP;
+
+    fn mul(self, other: &'b ScalarP) -> ScalarP {
+        ScalarP::new(&other.0 * &self.0)
+    }
+}
+
 impl<'a> Rem<&'a ScalarP> for ScalarP {
     type Output = ScalarP;
 
@@ -105,6 +114,14 @@ mod tests {
     #[test]
     fn test_inv() {
         assert!(CONTEXT.G.x.clone().inv().mul(&CONTEXT.G.x).0.is_one());
+    }
 
+    #[test]
+    fn test_borrow() {
+        let a = BigUint::one();
+        let b = BigUint::one();
+        let c = &a + &b;
+
+        assert_eq!(c, BigUint::from(2u32));
     }
 }

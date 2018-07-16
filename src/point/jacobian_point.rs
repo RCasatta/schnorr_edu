@@ -8,6 +8,7 @@ use context::G_MUL_CACHE;
 use std::ops::{Mul,Sub,Add};
 use std::fmt;
 use num_traits::Zero;
+use std::borrow::Borrow;
 
 // Very bad defining Eq like this since two equal Jacobian Point could have different coordinates
 // however it's useful for now and used only in the HashMap where values are normalized
@@ -41,11 +42,11 @@ impl PartialEq for JacobianPoint {
             return true;
         }
 
-        let u1 = self.x.clone().mul(&other.z.clone().pow(&CONTEXT.two));
-        let u2 = other.x.clone().mul(&self.z.clone().pow(&CONTEXT.two));
+        let u1 = self.x.borrow().mul(&other.z.borrow().pow(&CONTEXT.two));
+        let u2 = other.x.borrow().mul(&self.z.borrow().pow(&CONTEXT.two));
 
-        let s1 = self.y.clone().mul(&other.z.clone().pow(&CONTEXT.three));
-        let s2 = other.y.clone().mul(&self.z.clone().pow(&CONTEXT.three));
+        let s1 = self.y.borrow().mul(&other.z.borrow().pow(&CONTEXT.three));
+        let s2 = other.y.borrow().mul(&self.z.borrow().pow(&CONTEXT.three));
 
         if u1 == u2 && s1 == s2 {
             return true;
@@ -104,11 +105,14 @@ pub fn jacobian_point_double(p : JacobianPoint) -> Option<JacobianPoint> {
     if p.y.0.is_zero() {
         return None;
     }
-    let s = CONTEXT.four.clone().mul(&p.x).mul( &p.y.clone().pow(&CONTEXT.two) );
-    let m = CONTEXT.three.clone().mul( &p.x.clone().pow(&CONTEXT.two));
-    let x = m.clone().pow(&CONTEXT.two).sub( &s.clone().mul(&CONTEXT.two));
-    let y = m.clone().mul( &s.sub(&x) ).sub( &CONTEXT.eight.clone().mul(&p.y.clone().pow(&CONTEXT.four)));
-    let z = CONTEXT.two.clone().mul(&p.y).mul(&p.z);
+    let s = CONTEXT.four.borrow().mul(&p.x).mul( &p.y.clone()
+        .pow(&CONTEXT.two) );
+    let m = CONTEXT.three.borrow().mul( &p.x.borrow().pow(&CONTEXT.two));
+    let x = m.borrow().pow(&CONTEXT.two).sub( &s.clone()
+        .mul(&CONTEXT.two));
+    let y = m.borrow().mul( &s.sub(&x) ).sub( &CONTEXT.eight.clone()
+        .mul(&p.y.borrow().pow(&CONTEXT.four)));
+    let z = CONTEXT.two.borrow().mul(&p.y).mul(&p.z);
     Some(JacobianPoint{x,y,z})
 }
 
@@ -120,10 +124,10 @@ pub fn mixed_point_add(p1 : Option<JacobianPoint>, p2 : Option<Point>) -> Option
         (Some(p1), Some(p2)) => {
 
             let u1 = p1.x.clone();
-            let u2 = p2.x.clone().mul(&p1.z.clone().pow(&CONTEXT.two));
+            let u2 = p2.x.borrow().mul(&p1.z.borrow().pow(&CONTEXT.two));
 
             let s1 = p1.y.clone();
-            let s2 = p2.y.clone().mul(&p1.z.clone().pow(&CONTEXT.three));
+            let s2 = p2.y.borrow().mul(&p1.z.borrow().pow(&CONTEXT.three));
 
             if u1==u2 {
                 if s1==s2 {
@@ -159,11 +163,11 @@ pub fn jacobian_point_add(p1 : Option<JacobianPoint>, p2 : Option<JacobianPoint>
                 return mixed_point_add(Some(p1), Some(Point::from(p2)));
             }
 
-            let u1 = p1.x.clone().mul(&p2.z.clone().pow(&CONTEXT.two));
-            let u2 = p2.x.clone().mul(&p1.z.clone().pow(&CONTEXT.two));
+            let u1 = p1.x.borrow().mul(&p2.z.borrow().pow(&CONTEXT.two));
+            let u2 = p2.x.borrow().mul(&p1.z.borrow().pow(&CONTEXT.two));
 
-            let s1 = p1.y.clone().mul(&p2.z.clone().pow(&CONTEXT.three));
-            let s2 = p2.y.clone().mul(&p1.z.clone().pow(&CONTEXT.three));
+            let s1 = p1.y.borrow().mul(&p2.z.borrow().pow(&CONTEXT.three));
+            let s2 = p2.y.borrow().mul(&p1.z.borrow().pow(&CONTEXT.three));
 
             if u1==u2 {
                 if s1==s2 {
@@ -176,7 +180,7 @@ pub fn jacobian_point_add(p1 : Option<JacobianPoint>, p2 : Option<JacobianPoint>
             let r = s2.sub(&s1);
             let x3 = r.pow(&CONTEXT.two)
                 .sub( &h.pow(&CONTEXT.three) )
-                .sub( &u1.clone().mul(&CONTEXT.two).mul(&h.pow(&CONTEXT.two) ) );
+                .sub( &u1.borrow().mul(&CONTEXT.two).mul(&h.pow(&CONTEXT.two) ) );
 
             let y3 = r.mul( &u1.mul(&h.pow(&CONTEXT.two) ).sub(&x3) )
                 .sub(&s1.mul(&h.pow(&CONTEXT.three)));

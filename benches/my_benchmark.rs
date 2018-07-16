@@ -23,7 +23,6 @@ use secp256k1::Message;
 use secp256k1::key::SecretKey;
 use schnorr_edu::util::shamir::shamirs_trick;
 use num_traits::One;
-use schnorr_edu::old::schnorr_batch_verify;
 
 
 fn benchmark_biguint(c: &mut Criterion) {
@@ -156,7 +155,7 @@ fn benchmark_verify(c: &mut Criterion) {
 
     let signatures = signatures_orig.clone();
     let pub_keys = pub_keys_orig.clone();
-    c.bench_function("Schnorr affine verify",move |b| b.iter(|| {
+    c.bench_function("Old schnorr affine verify",move |b| b.iter(|| {
         let i = thread_rng().gen_range(0usize, precomputed_signatures);
         let result = old::schnorr_verify(&msg, &pub_keys[i], &signatures[i]);
         criterion::black_box(result);
@@ -185,7 +184,7 @@ fn benchmark_batch_verify(c: &mut Criterion) {
     let mut signatures_orig = Vec::new();
     let mut pub_keys_orig = Vec::new();
     let mut messages_orig = Vec::new();
-    let precomputed_signatures= 10usize;
+    let precomputed_signatures= 100usize;
     for _ in 0..precomputed_signatures {
         let sec_key = rng.gen();
         rng.fill_bytes(&mut msg);
@@ -208,7 +207,7 @@ fn benchmark_batch_verify(c: &mut Criterion) {
     let signatures = signatures_orig.clone();
     let pub_keys = pub_keys_orig.clone();
     let messages = messages_orig.clone();
-    c.bench_function("Batch verify",move |b| b.iter(|| {
+    c.bench_function("Schnorr 100 Batch verify",move |b| b.iter(|| {
         let result = schnorr_batch_verify(&messages, &pub_keys, &signatures);
         criterion::black_box(result);
         assert!(result);
@@ -230,7 +229,7 @@ fn benchmark_sign(c: &mut Criterion) {
 
     let mut rng = thread_rng();
     let mut msg = [0u8;32];
-    c.bench_function("Schnorr affine sign",move |b|
+    c.bench_function("Old schnorr affine sign",move |b|
         b.iter(|| {
             rng.fill_bytes(&mut msg);
             let sec_key= rng.gen();
