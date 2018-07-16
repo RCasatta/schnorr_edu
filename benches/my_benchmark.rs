@@ -294,8 +294,8 @@ fn benchmark_point(c: &mut Criterion) {
     let mut current = None;
     for _ in 0..total {
         current = jacobian_point_add(
-            Some( JacobianPoint::from(CONTEXT.G.clone())),
-            current);
+            Some( &JacobianPoint::from(CONTEXT.G.clone())),
+            current.as_ref());
         points_orig.push(current.clone().unwrap());
     }
 
@@ -304,7 +304,7 @@ fn benchmark_point(c: &mut Criterion) {
         b.iter(|| {
             let a = thread_rng().choose(&points).unwrap();
             let b = thread_rng().choose(&points).unwrap();
-            let point = jacobian_point_add(Some(a.to_owned()),Some(b.to_owned()));
+            let point = jacobian_point_add(Some(a),Some(b));
             criterion::black_box(point);
         }));
 
@@ -342,8 +342,8 @@ fn benchmark_point(c: &mut Criterion) {
             let l : ScalarN = thread_rng().gen();
 
             let point = jacobian_point_add(
-                jacobian_point_mul(p.to_owned(), k),
-                jacobian_point_mul(q.to_owned(), l));
+                jacobian_point_mul(p, &k).as_ref(),
+                jacobian_point_mul(q, &l).as_ref());
             criterion::black_box(point);
         }));
 

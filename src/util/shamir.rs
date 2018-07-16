@@ -13,7 +13,7 @@ pub fn shamirs_trick(k : ScalarN, P: JacobianPoint, l: ScalarN, Q : JacobianPoin
     precomputed.push(None);
     precomputed.push(Some(Q.clone()));
     precomputed.push(Some(P.clone()));
-    precomputed.push(jacobian_point_add( Some(Q), Some(P)));
+    precomputed.push(jacobian_point_add( Some(&Q), Some(&P)));
 
     let mut acc : Option<JacobianPoint> = None;
     let two = BigUint::one() + BigUint::one();
@@ -27,10 +27,10 @@ pub fn shamirs_trick(k : ScalarN, P: JacobianPoint, l: ScalarN, Q : JacobianPoin
         let current = precomputed[index].to_owned();
 
         if acc.is_some() {
-            acc = jacobian_point_mul(acc.unwrap(), two_scalar_n.clone());
+            acc = jacobian_point_mul(&acc.unwrap(), &two_scalar_n);
         }
         if current.is_some() {
-            acc = jacobian_point_add(acc, current);
+            acc = jacobian_point_add(acc.as_ref(), current.as_ref());
         }
         exponent >>= 1usize;
         if exponent.is_zero() {
@@ -68,7 +68,8 @@ mod tests {
         //let Q = point_mul(P.clone(), rng.gen::<ScalarN>()).unwrap();
         let k = rng.gen::<ScalarN>();
         let l = rng.gen::<ScalarN>();
-        let q = jacobian_point_add( generator_mul(&k),  generator_mul( &l)).unwrap();
+        let q = jacobian_point_add( generator_mul(&k).as_ref(),
+                                    generator_mul( &l).as_ref()).unwrap();
         let r = shamirs_trick(k,P,l,Q);
 
         assert_eq!(r,q);

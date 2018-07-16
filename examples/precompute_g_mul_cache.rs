@@ -19,8 +19,8 @@ fn main() {
             let current = BigUint::from(j) << (i*8);
             //can't use generator_mul if this is the cache for it
             let point = jacobian_point_mul(
-                CONTEXT.G_jacobian.clone(),
-                ScalarN(current.clone()))
+                &CONTEXT.G_jacobian,
+                &ScalarN(current))
                 .unwrap();
             buffer.write(&point.as_uncompressed_bytes() ).unwrap();
         }

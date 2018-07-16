@@ -160,12 +160,19 @@ pub fn schnorr_jacobi_batch_verify(messages : &Vec<Msg>, pub_keys:  &Vec<Point>,
         let P = &pub_keys[i];
 
         coeff = coeff.add( a.to_owned().mul(&signature.s) );
-        R_point_sum = jacobian_point_add(jacobian_point_mul(R.to_owned(), a.to_owned() ), R_point_sum);
-        P_point_sum = jacobian_point_add(jacobian_point_mul(JacobianPoint::from( P.to_owned()), a.to_owned().mul(e) ),P_point_sum);
+        R_point_sum = jacobian_point_add(jacobian_point_mul(R, a ).as_ref(), R_point_sum.as_ref());
+
+        let point = JacobianPoint::from(P.to_owned());
+        let option = jacobian_point_mul(
+            &point, &a.to_owned().mul(e));
+
+        P_point_sum = jacobian_point_add(option.as_ref(),
+                                         P_point_sum.as_ref());
     }
 
     let left = generator_mul(&coeff);
-    let right = jacobian_point_add(R_point_sum, P_point_sum);
+    let right = jacobian_point_add(R_point_sum.as_ref(),
+                                   P_point_sum.as_ref());
 
     left==right
 }

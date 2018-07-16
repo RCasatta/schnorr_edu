@@ -137,7 +137,7 @@ pub fn schnorr_batch_verify(messages : &Vec<Msg>, pub_keys:  &Vec<Point>, signat
         let t0 = inner_product.pop().unwrap();
         let t1 = inner_product.pop().unwrap();
         //count+=1;
-        inner_product.push(Term {coeff: t1.coeff.clone(), point: jacobian_point_add(Some(t0.point.clone()), Some(t1.point.clone())).unwrap() });
+        inner_product.push(Term {coeff: t1.coeff.clone(), point: jacobian_point_add(Some(&t0.point), Some(&t1.point)).unwrap() });
         //println!("t0.coeff {} t1.coeff {}, t0.coeff-t1.coeff: {}",t0.coeff,t1.coeff, t0.coeff-t1.coeff);
         if t0.coeff != t1.coeff {
             inner_product.push(Term {coeff: t0.coeff-t1.coeff, point: t0.point });
@@ -145,7 +145,7 @@ pub fn schnorr_batch_verify(messages : &Vec<Msg>, pub_keys:  &Vec<Point>, signat
     }
     //println!("total iteration {}",count);
     let last = inner_product.pop().unwrap();
-    let right = jacobian_point_mul(last.point, last.coeff).unwrap();
+    let right = jacobian_point_mul(&last.point, &last.coeff).unwrap();
     let left = generator_mul(&coeff).unwrap();
 
     left == right
