@@ -13,6 +13,7 @@ pub mod context;
 pub mod scalar;
 pub mod signature;
 pub mod optimized_product;
+pub mod shamir;
 
 use std::ops::{Mul,Sub,Add};
 use num_traits::One;
@@ -51,13 +52,13 @@ pub fn schnorr_sign(msg : &Msg, sec_key: &ScalarN) -> Signature {
 pub fn schnorr_jacobi_sign(msg : &Msg, sec_key: &ScalarN) -> Signature {
     let sec_key_bytes = sec_key.to_32_bytes();
     let mut k = concat_and_hash(&sec_key_bytes, msg, &vec![]);
-    let R_jacobian = CONTEXT.G_jacobian.clone().mul(&k);
+    let R_jacobian = generator_mul(&k).unwrap();
     let R = Point::from(R_jacobian);
     if !R.y.is_jacobi() {
         k = CONTEXT.n.clone().sub(k);
     }
     let Rx = R.x.to_32_bytes();
-    let dG_jacobian = CONTEXT.G_jacobian.clone().mul(sec_key);
+    let dG_jacobian = generator_mul(&sec_key).unwrap();
     let dG = Point::from(dG_jacobian);
     let e = concat_and_hash(&Rx, &dG.as_bytes(), msg);
     let s = k.add(e.mul(sec_key));
@@ -78,7 +79,7 @@ pub fn schnorr_jacobi_verify(msg : &Msg, pub_key: &Point, signature: &Signature)
         return false;
     }
     let e = concat_and_hash(&signature_bytes[..32], &pub_key.as_bytes()[..], msg);
-    let a = CONTEXT.G_jacobian.clone().mul(&signature.s);
+    let a = generator_mul(&signature.s).unwrap();
     let b = JacobianPoint::from(pub_key.to_owned()).mul(&CONTEXT.n.clone().sub(e));
     let R = Point::from(a.add(b));
 
@@ -240,7 +241,7 @@ pub fn schnorr_optimized_jacobi_batch_verify(messages : &Vec<Msg>, pub_keys:  &V
     //println!("total iteration {}",count);
     let last = inner_product.pop().unwrap();
     let right = jacobian_point_mul(last.point, last.coeff).unwrap();
-    let left = CONTEXT.G_jacobian.clone().mul(&coeff);
+    let left = generator_mul(&coeff).unwrap();
 
     left == right
 }
@@ -291,8 +292,8 @@ pub fn schnorr_jacobi_batch_verify(messages : &Vec<Msg>, pub_keys:  &Vec<Point>,
         P_point_sum = jacobian_point_add(jacobian_point_mul(JacobianPoint::from( P.to_owned()), a.to_owned().mul(e) ),P_point_sum);
     }
 
-    let left = CONTEXT.G_jacobian.clone().mul(&coeff);
-    let right = jacobian_point_add(R_point_sum, P_point_sum).unwrap();
+    let left = generator_mul(&coeff);
+    let right = jacobian_point_add(R_point_sum, P_point_sum);
 
     left==right
 }

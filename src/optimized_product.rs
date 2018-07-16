@@ -34,11 +34,9 @@ mod tests {
     use std::collections::BinaryHeap;
     use scalar::ScalarN;
     use optimized_product::ProductTerm;
-    use point::JacobianPoint;
     use num_bigint::BigUint;
     use num_traits::One;
     use context::CONTEXT;
-    use std::ops::Sub;
     use std::ops::Add;
 
     #[test]
@@ -56,8 +54,6 @@ mod tests {
         heap.push(a);
         let a = ProductTerm{coeff: three, point: CONTEXT.G_jacobian.clone() };
         heap.push(a);
-
-
 
     }
 }

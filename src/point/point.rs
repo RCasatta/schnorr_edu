@@ -110,7 +110,7 @@ pub fn point_mul(mut p: Point, n : ScalarN) -> Option<Point> {
             return r;
         }
         p = match is_g {
-            true  => AFFINES_DOUBLES_CACHE[i].clone(),
+            true  => AFFINES_DOUBLES_CACHE[i+1].clone(),
             false => point_add(Some(p.clone()),Some(p)).unwrap(),
         };
         n = ris;

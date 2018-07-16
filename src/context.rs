@@ -10,6 +10,8 @@ use scalar::ScalarP;
 use num_traits::One;
 use std::str::FromStr;
 use point::JacobianPoint;
+use std::fs::File;
+use std::io::Read;
 
 lazy_static! {
     pub static ref CONTEXT: Context = {
@@ -89,6 +91,18 @@ lazy_static! {
     };
 }
 
+lazy_static! {
+    pub static ref BIG_CACHE: Vec<JacobianPoint> = {
+        let mut vec = Vec::with_capacity(8160);
+        let mut f = File::open("big_cache.dat").unwrap();
+        let mut buffer = [0; 33];
+        for _ in 0..8160 {
+            f.read(&mut buffer).unwrap();
+            vec.push(JacobianPoint::from_bytes(&buffer).unwrap());
+        }
+        vec
+    };
+}
 
 #[cfg(test)]
 mod tests {
@@ -98,6 +112,12 @@ mod tests {
     fn test_lazy_static() {
         let context = Context::default();
         assert_eq!(CONTEXT.G , context.G);
+
+    }
+
+    #[test]
+    fn test_load_big() {
+        let option = BIG_CACHE.get(0);
 
     }
 }
