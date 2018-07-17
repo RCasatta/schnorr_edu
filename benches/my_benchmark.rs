@@ -155,7 +155,7 @@ fn benchmark_verify(c: &mut Criterion) {
 
     let signatures = signatures_orig.clone();
     let pub_keys = pub_keys_orig.clone();
-    c.bench_function("Old schnorr affine verify",move |b| b.iter(|| {
+    c.bench_function("Old schnorr aff verify",move |b| b.iter(|| {
         let i = thread_rng().gen_range(0usize, precomputed_signatures);
         let result = old::schnorr_verify(&msg, &pub_keys[i], &signatures[i]);
         criterion::black_box(result);
@@ -232,7 +232,7 @@ fn benchmark_sign(c: &mut Criterion) {
 
     let mut rng = thread_rng();
     let mut msg = [0u8;32];
-    c.bench_function("Old schnorr affine sign",move |b|
+    c.bench_function("Old schnorr aff sign",move |b|
         b.iter(|| {
             rng.fill_bytes(&mut msg);
             let sec_key= rng.gen();
@@ -336,14 +336,52 @@ fn benchmark_point(c: &mut Criterion) {
             criterion::black_box(point);
         }));
 
+
     let points = points_orig.clone();
-    c.bench_function("EC Jacobian Point mul 4naf",move |b|
+    c.bench_function("EC Jac P mul 2naf",move |b|
         b.iter(|| {
             let sec_key : ScalarN = thread_rng().gen();
             let a = thread_rng().choose(&points).unwrap();;
-            let point = jacobian_point_mul_4naf(a,&sec_key);
+            let point = jacobian_point_mul_wnaf(a,&sec_key, 2i8);
             criterion::black_box(point);
         }));
+
+    let points = points_orig.clone();
+    c.bench_function("EC Jac P mul 3naf",move |b|
+        b.iter(|| {
+            let sec_key : ScalarN = thread_rng().gen();
+            let a = thread_rng().choose(&points).unwrap();;
+            let point = jacobian_point_mul_wnaf(a,&sec_key, 3i8);
+            criterion::black_box(point);
+        }));
+
+    let points = points_orig.clone();
+    c.bench_function("EC Jac P mul 4naf",move |b|
+        b.iter(|| {
+            let sec_key : ScalarN = thread_rng().gen();
+            let a = thread_rng().choose(&points).unwrap();;
+            let point = jacobian_point_mul_wnaf(a,&sec_key, 4i8);
+            criterion::black_box(point);
+        }));
+
+    let points = points_orig.clone();
+    c.bench_function("EC Jac P mul 5naf",move |b|
+        b.iter(|| {
+            let sec_key : ScalarN = thread_rng().gen();
+            let a = thread_rng().choose(&points).unwrap();;
+            let point = jacobian_point_mul_wnaf(a,&sec_key, 5i8);
+            criterion::black_box(point);
+        }));
+
+    let points = points_orig.clone();
+    c.bench_function("EC Jac P mul 6naf",move |b|
+        b.iter(|| {
+            let sec_key : ScalarN = thread_rng().gen();
+            let a = thread_rng().choose(&points).unwrap();;
+            let point = jacobian_point_mul_wnaf(a,&sec_key, 6i8);
+            criterion::black_box(point);
+        }));
+
 
 
     c.bench_function("G JPoint mul",move |b|

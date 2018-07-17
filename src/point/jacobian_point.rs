@@ -87,7 +87,7 @@ impl JacobianPoint {
     }
 
     pub fn mul(&self, n : &ScalarN) -> Self {
-        jacobian_point_mul_4naf(self, n).unwrap()
+        jacobian_point_mul_wnaf(self, n, 5i8).unwrap()
     }
 
     pub fn negate(self) -> Self{
@@ -266,23 +266,28 @@ pub fn jacobian_point_mul( P: &JacobianPoint, n : &ScalarN) -> Option<JacobianPo
 }
 
 #[allow(non_snake_case)]
-pub fn jacobian_point_mul_4naf( P: &JacobianPoint, n : &ScalarN) -> Option<JacobianPoint> {
-    let vec = n.to_owned().to_wnaf(4);
-
-    let mut precomputed = Vec::new();
+pub fn jacobian_point_mul_wnaf( P: &JacobianPoint, n : &ScalarN, w:i8) -> Option<JacobianPoint> {
+    assert!(w>1 && w<7);
+    let vec = n.to_owned().to_wnaf(w);
+    let times = 2i8.pow( w as u32 - 2 );
+    let mut positives = Vec::new();
+    let mut prec =  P.to_owned();
     let two_P = P.double();
-    let three_P = jacobian_point_add(two_P.as_ref(), Some(P));
-    let five_P  = jacobian_point_add(three_P.as_ref(), two_P.as_ref());
-    let seven_P = jacobian_point_add(five_P.as_ref(), two_P.as_ref()).unwrap();
+    positives.push(prec.clone());
+    for _ in 1..times {
+        prec = jacobian_point_add(two_P.as_ref(), Some(&prec)).unwrap();
+        positives.push(prec.clone());
 
-    precomputed.push(seven_P.clone().negate());
-    precomputed.push(five_P.clone().unwrap().negate());
-    precomputed.push(three_P.clone().unwrap().negate());
-    precomputed.push(P.to_owned().negate());
-    precomputed.push(P.to_owned());
-    precomputed.push(three_P.unwrap());
-    precomputed.push(five_P.unwrap());
-    precomputed.push(seven_P);
+    }
+    let mut precomputed = Vec::new();
+
+    for el in positives.iter().rev() {
+        precomputed.push(el.to_owned().negate());
+    }
+    for el in positives.iter() {
+        precomputed.push(el.to_owned());
+    }
+    let max = 2i8.pow( w as u32 - 1 )-1;
 
     let mut acc : Option<JacobianPoint> = None;
 
@@ -292,7 +297,7 @@ pub fn jacobian_point_mul_4naf( P: &JacobianPoint, n : &ScalarN) -> Option<Jacob
         }
 
         if *el != 0i8 {
-            let index = (el+7)/2;
+            let index = (el+max)/2;
             acc = jacobian_point_add(acc.as_ref(), precomputed.get(index as usize));
         }
     }
@@ -352,17 +357,29 @@ mod tests {
     }
 
     #[test]
-    fn test_mul_4naf() {
+    fn test_mul_wnaf() {
         //jacobian_point_mul_4naf
         let two = ScalarN(BigUint::from(2u32));
 
-        let option = jacobian_point_mul_4naf(&CONTEXT.G_jacobian, &two);
+        let option = jacobian_point_mul_wnaf(&CONTEXT.G_jacobian, &two, 4i8);
         assert_eq!(CONTEXT.G_jacobian.clone().double(), option);
 
         let n : ScalarN = thread_rng().gen();
-        let option = jacobian_point_mul_4naf(&CONTEXT.G_jacobian, &n);
+
+        let option = jacobian_point_mul_wnaf(&CONTEXT.G_jacobian, &n, 2i8);
         assert_eq!(generator_mul(&n), option);
 
+        let option = jacobian_point_mul_wnaf(&CONTEXT.G_jacobian, &n, 3i8);
+        assert_eq!(generator_mul(&n), option);
+
+        let option = jacobian_point_mul_wnaf(&CONTEXT.G_jacobian, &n, 4i8);
+        assert_eq!(generator_mul(&n), option);
+
+        let option = jacobian_point_mul_wnaf(&CONTEXT.G_jacobian, &n, 5i8);
+        assert_eq!(generator_mul(&n), option);
+
+        let option = jacobian_point_mul_wnaf(&CONTEXT.G_jacobian, &n, 6i8);
+        assert_eq!(generator_mul(&n), option);
 
     }
 }
