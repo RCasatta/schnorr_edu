@@ -38,11 +38,13 @@ impl ScalarP {
         ScalarP(self.0.modpow(&n.0, &CONTEXT.p.0))
     }
     pub fn inv(&self) -> Self {
+        //TODO improve here
         ScalarP(self.0.modpow(&CONTEXT.p_sub2.0, &CONTEXT.p.0))
     }
 
     pub fn is_jacobi(&self) -> bool {
-        self.to_owned().pow(&CONTEXT.p_sub1_div2).0.is_one()
+        //TODO improve here
+        self.pow(&CONTEXT.p_sub1_div2).0.is_one()
     }
 
 }
@@ -75,6 +77,8 @@ impl<'a, 'b> Mul<&'b ScalarP> for &'a ScalarP {
         ScalarP::new(&other.0 * &self.0)
     }
 }
+
+//TODO add mul u32
 
 impl<'a> Rem<&'a ScalarP> for ScalarP {
     type Output = ScalarP;

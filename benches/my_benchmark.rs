@@ -325,13 +325,31 @@ fn benchmark_point(c: &mut Criterion) {
             criterion::black_box(point);
         }));
 
-    c.bench_function("G JPoint mul big",move |b|
+    c.bench_function("G JPoint mul",move |b|
         b.iter(|| {
             let sec_key : ScalarN = thread_rng().gen();
             let point = generator_mul(&sec_key).unwrap();
             criterion::black_box(point);
         }));
 
+    c.bench_function("G JPoint 2mul",move |b|
+        b.iter(|| {
+            let sec_key1 : ScalarN = thread_rng().gen();
+            let sec_key2 : ScalarN = thread_rng().gen();
+            let point1 = generator_mul(&sec_key1).unwrap();
+            let point2 = generator_mul(&sec_key2).unwrap();
+            criterion::black_box(point1);
+            criterion::black_box(point2);
+        }));
+
+    c.bench_function("G JPoint 2mul combined",move |b|
+        b.iter(|| {
+            let sec_key1 : ScalarN = thread_rng().gen();
+            let sec_key2 : ScalarN = thread_rng().gen();
+            let (point1, point2) = generator_mul_combined(&sec_key1,&sec_key2);
+            criterion::black_box(point1);
+            criterion::black_box(point2);
+        }));
 
     let points = points_orig.clone();
     c.bench_function("EC JPoint kP+lQ",move |b|
@@ -363,8 +381,8 @@ fn benchmark_point(c: &mut Criterion) {
 
 criterion_group!{
     name = benches;
-    //config = Criterion::default().sample_size(10);
-    config = Criterion::default().sample_size(2).without_plots();
+    config = Criterion::default().sample_size(10);
+    //config = Criterion::default().sample_size(2).without_plots();
     targets = benchmark_biguint, benchmark_point, benchmark_verify, benchmark_batch_verify, benchmark_sign
 }
 

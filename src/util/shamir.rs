@@ -4,7 +4,7 @@ use point::jacobian_point_add;
 use num_bigint::BigUint;
 use num_traits::One;
 use num_traits::Zero;
-use point::jacobian_point_mul;
+use point::jacobian_point::jacobian_point_double;
 
 #[allow(non_snake_case)]
 pub fn shamirs_trick(k : ScalarN, P: JacobianPoint, l: ScalarN, Q : JacobianPoint) -> JacobianPoint {
@@ -16,8 +16,6 @@ pub fn shamirs_trick(k : ScalarN, P: JacobianPoint, l: ScalarN, Q : JacobianPoin
     precomputed.push(jacobian_point_add( Some(&Q), Some(&P)));
 
     let mut acc : Option<JacobianPoint> = None;
-    let two = BigUint::one() + BigUint::one();
-    let two_scalar_n = ScalarN(two);
     let mut exponent = BigUint::one()<<255;
 
     loop {
@@ -27,7 +25,7 @@ pub fn shamirs_trick(k : ScalarN, P: JacobianPoint, l: ScalarN, Q : JacobianPoin
         let current = precomputed[index].to_owned();
 
         if acc.is_some() {
-            acc = jacobian_point_mul(&acc.unwrap(), &two_scalar_n);
+            acc = jacobian_point_double(&acc.unwrap());
         }
         if current.is_some() {
             acc = jacobian_point_add(acc.as_ref(), current.as_ref());

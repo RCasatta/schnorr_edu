@@ -69,13 +69,15 @@ impl Default for Context {
 }
 
 lazy_static! {
-    pub static ref G_MUL_CACHE: Vec<JacobianPoint> = {
-        let mut vec = Vec::with_capacity(8160);
+    pub static ref G_MUL_CACHE: Vec<Point> = {
+        let total_elements=8192usize;
+        let mut vec = Vec::with_capacity(total_elements);
         let mut f = File::open("res/g_mul_cache.dat").unwrap();
         let mut buffer = [0; 64];
-        for _ in 0..8160 {
+        for _ in 0..total_elements {
             f.read(&mut buffer).unwrap();
-            vec.push(JacobianPoint::from_uncompressed_bytes(&buffer).unwrap());
+            let option = Point::from_uncompressed_bytes(&buffer);
+            vec.push(option.unwrap());
         }
         vec
     };
@@ -96,7 +98,7 @@ mod tests {
     #[test]
     fn test_load_big() {
         let option = G_MUL_CACHE.get(0).unwrap();
-        assert_eq!(CONTEXT.G_jacobian , option.to_owned());
+        assert_eq!(CONTEXT.G , option.to_owned());
 
 
     }

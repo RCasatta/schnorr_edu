@@ -67,12 +67,11 @@ pub fn schnorr_verify(msg : &Msg, pub_key: &Point, signature: &Signature) -> boo
     let e = concat_and_hash(&signature_bytes[..32], &pub_key.as_bytes()[..], msg);
     let a = generator_mul(&signature.s).unwrap();
     let b = JacobianPoint::from(pub_key.to_owned()).mul(&CONTEXT.n.clone().sub(e));
-    let R = Point::from(a.add(b));
-
-    /*if R.is_none() {
+    let R = jacobian_point_add(Some(&a), Some(&b));
+    if R.is_none() {
         return false;
     }
-    let R = R.unwrap();*/
+    let R = Point::from(R.unwrap());
 
     if R.x != signature.Rx {
         return false;
@@ -126,7 +125,7 @@ pub fn schnorr_batch_verify(messages : &Vec<Msg>, pub_keys:  &Vec<Point>, signat
 
         coeff = coeff.add( a.to_owned().mul(&signature.s) );
         inner_product.push(Term {coeff: a.to_owned(), point: R.to_owned() });
-        inner_product.push(Term {coeff: a.to_owned().mul(e), point: JacobianPoint::from( P.to_owned() ) });
+        inner_product.push(Term {coeff: a.to_owned().mul(e), point: JacobianPoint::from( P.to_owned())  });
     }
     inner_product.push(Term{coeff: CONTEXT.n.clone().sub( coeff), point: CONTEXT.G_jacobian.clone() });  // -sG
 

@@ -105,13 +105,15 @@ pub fn jacobian_point_double(p : &JacobianPoint) -> Option<JacobianPoint> {
     if p.y.0.is_zero() {
         return None;
     }
-    let s = CONTEXT.four.borrow().mul(&p.x).mul( &p.y.clone()
-        .pow(&CONTEXT.two) );
-    let m = CONTEXT.three.borrow().mul( &p.x.borrow().pow(&CONTEXT.two));
-    let x = m.borrow().pow(&CONTEXT.two).sub( &s.clone()
+    let p_x_pow2 = p.x.borrow().mul(&p.x);
+    let p_y_pow2 = p.y.borrow().mul(&p.y);
+    let p_y_pow4 = p_y_pow2.borrow().mul(&p_y_pow2);
+    let s = CONTEXT.four.borrow().mul(&p.x).mul( &p_y_pow2 );
+    let m = CONTEXT.three.borrow().mul( &p_x_pow2);
+    let x = m.borrow().mul(&m).sub( &s.clone()
         .mul(&CONTEXT.two));
     let y = m.borrow().mul( &s.sub(&x) ).sub( &CONTEXT.eight.clone()
-        .mul(&p.y.borrow().pow(&CONTEXT.four)));
+        .mul(&p_y_pow4));
     let z = CONTEXT.two.borrow().mul(&p.y).mul(&p.z);
     Some(JacobianPoint{x,y,z})
 }
@@ -123,27 +125,31 @@ pub fn mixed_point_add(p1 : Option<&JacobianPoint>, p2 : Option<&Point>) -> Opti
         (None, Some(p2)) => Some(JacobianPoint::from( p2.clone())),
         (Some(p1), Some(p2)) => {
 
-            let u1 = p1.x.clone();
-            let u2 = p2.x.borrow().mul(&p1.z.borrow().pow(&CONTEXT.two));
+            let p1_z_pow2 = p1.z.borrow().mul(&p1.z);
 
-            let s1 = p1.y.clone();
-            let s2 = p2.y.borrow().mul(&p1.z.borrow().pow(&CONTEXT.three));
+            let u1 = &p1.x;
+            let u2 = p2.x.borrow().mul(&p1_z_pow2);
 
-            if u1==u2 {
-                if s1==s2 {
+            let s1 = &p1.y;
+            let s2 = p2.y.borrow().mul(&p1_z_pow2.mul(&p1.z));
+
+            if *u1==u2 {
+                if *s1==s2 {
                     return jacobian_point_double(p1);
                 } else {
                     return None;
                 }
             }
             let h = u2.sub(&u1);
+            let h_pow2 = h.borrow().mul(&h);
+            let h_pow3 = h_pow2.borrow().mul(&h);
             let r = s2.sub(&s1);
-            let x3 = r.pow(&CONTEXT.two)
-                .sub( &h.pow(&CONTEXT.three) )
-                .sub( &u1.clone().mul(&CONTEXT.two).mul(&h.pow(&CONTEXT.two) ) );
-
-            let y3 = r.mul( &u1.mul(&h.pow(&CONTEXT.two) ).sub(&x3) )
-                .sub(&s1.mul(&h.pow(&CONTEXT.three)));
+            let r_pow2 = r.borrow().mul(&r);
+            let x3 = r_pow2
+                .sub( &h_pow3 )
+                .sub( &u1.borrow().mul(&CONTEXT.two).mul(&h_pow2 ) );
+            let y3 = r.mul( &u1.mul(&h_pow2 ).sub(&x3) )
+                .sub(&s1.mul(&h_pow3));
             let z3 = h.mul(&p1.z);
             Some(JacobianPoint{x:x3,y:y3,z:z3})
         }
@@ -156,18 +162,14 @@ pub fn jacobian_point_add(p1 : Option<&JacobianPoint>, p2 : Option<&JacobianPoin
         (Some(p1), None) => Some(p1.clone()),
         (None, Some(p2)) => Some(p2.clone()),
         (Some(p1), Some(p2)) => {
-            if p1.z.0.is_one() {
-                return mixed_point_add(Some(&p2), Some(&Point::from(p1.to_owned())));
-            }
-            if p2.z.0.is_one() {
-                return mixed_point_add(Some(&p1), Some(&Point::from(p2.to_owned())));
-            }
+            let p2_z_pow2 = p2.z.borrow().mul(&p2.z);
+            let p1_z_pow2 = p1.z.borrow().mul(&p1.z);
 
-            let u1 = p1.x.borrow().mul(&p2.z.borrow().pow(&CONTEXT.two));
-            let u2 = p2.x.borrow().mul(&p1.z.borrow().pow(&CONTEXT.two));
+            let u1 = p1.x.borrow().mul(&p2_z_pow2);
+            let u2 = p2.x.borrow().mul(&p1_z_pow2);
 
-            let s1 = p1.y.borrow().mul(&p2.z.borrow().pow(&CONTEXT.three));
-            let s2 = p2.y.borrow().mul(&p1.z.borrow().pow(&CONTEXT.three));
+            let s1 = p1.y.borrow().mul(&p2_z_pow2.mul(&p2.z));
+            let s2 = p2.y.borrow().mul(&p1_z_pow2.mul(&p1.z));
 
             if u1==u2 {
                 if s1==s2 {
@@ -177,30 +179,64 @@ pub fn jacobian_point_add(p1 : Option<&JacobianPoint>, p2 : Option<&JacobianPoin
                 }
             }
             let h = u2.sub(&u1);
+            let h_pow2 = h.borrow().mul(&h);
+            let h_pow3 = h_pow2.borrow().mul(&h);
             let r = s2.sub(&s1);
-            let x3 = r.pow(&CONTEXT.two)
-                .sub( &h.pow(&CONTEXT.three) )
-                .sub( &u1.borrow().mul(&CONTEXT.two).mul(&h.pow(&CONTEXT.two) ) );
-
-            let y3 = r.mul( &u1.mul(&h.pow(&CONTEXT.two) ).sub(&x3) )
-                .sub(&s1.mul(&h.pow(&CONTEXT.three)));
+            let r_pow2 = r.borrow().mul(&r);
+            let x3 = r_pow2
+                .sub( &h_pow3 )
+                .sub( &u1.borrow().mul(&CONTEXT.two).mul(&h_pow2 ) );
+            let y3 = r.mul( &u1.mul(&h_pow2 ).sub(&x3) )
+                .sub(&s1.mul(&h_pow3));
             let z3 = h.mul(&p1.z).mul(&p2.z);
             Some(JacobianPoint{x:x3,y:y3,z:z3})
         }
     }
 }
 
+pub fn generator_mul_combined(n1 : &ScalarN,n2 : &ScalarN) -> (Option<JacobianPoint>,Option<JacobianPoint>) {
+    let mut acc1 : Option<JacobianPoint> = None;
+    let mut acc2 : Option<JacobianPoint> = None;
+    let mut _junk1 : Option<JacobianPoint> = None;
+    let mut _junk2 : Option<JacobianPoint> = None;
+    for (i,(byte1,byte2)) in n1.0.to_bytes_le().iter().zip(n2.0.to_bytes_le().iter()).enumerate() {
+        let index = i * 256usize;
+        let index1 = index + usize::from(*byte1);
+        let index2 = index + usize::from(*byte2);
+        //the benefit of calculating together should come from the locality of the cache
+        let point1 = G_MUL_CACHE.get(index1);
+        let point2 = G_MUL_CACHE.get(index2);
+        if *byte1 != 0u8 {
+            acc1 = mixed_point_add(acc1.as_ref(), point1);
+        } else {
+            _junk1 = mixed_point_add(acc1.as_ref(), Some(&CONTEXT.G));
+        }
+        if *byte2 != 0u8 {
+            acc2 = mixed_point_add(acc2.as_ref(), point2);
+        } else {
+            _junk2 = mixed_point_add(acc2.as_ref(), Some(&CONTEXT.G));
+        }
+    }
+    (acc1,acc2)
+}
+
 pub fn generator_mul(n : &ScalarN) -> Option<JacobianPoint> {
     let mut acc : Option<JacobianPoint> = None;
+    let mut _junk : Option<JacobianPoint> = None;
     for (i,byte) in n.0.to_bytes_le().iter().enumerate() {
-        if byte != &0u8 {
-            let index = i * 255usize + (byte - 1u8) as usize;
-            let point = G_MUL_CACHE[index].to_owned();
-            acc = jacobian_point_add(acc.as_ref(), Some(&point));
+        let index = i * 256usize  + usize::from(*byte);
+        let point = G_MUL_CACHE.get(index);
+        if *byte != 0u8 {
+            acc  = mixed_point_add(acc.as_ref(), point);
+        }  else {
+            // the purpose of this arm is to try to achieve constant time
+            _junk = mixed_point_add(acc.as_ref(), Some(&CONTEXT.G));
         }
     }
     acc
 }
+
+// https://en.wikipedia.org/wiki/Elliptic_curve_point_multiplication
 
 #[allow(non_snake_case)]
 pub fn jacobian_point_mul( P: &JacobianPoint, n : &ScalarN) -> Option<JacobianPoint> {

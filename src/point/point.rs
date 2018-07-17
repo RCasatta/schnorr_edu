@@ -8,6 +8,7 @@ use num_traits::One;
 use scalar::ScalarN;
 use scalar::ScalarP;
 use point::JacobianPoint;
+use std::borrow::Borrow;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Point {
@@ -34,8 +35,10 @@ impl From<JacobianPoint> for Point {
         if j.z.0.is_one() {
             return Point{x:j.x,y:j.y}
         }
-        let x = j.x.mul( &j.z.pow( &CONTEXT.two ).inv()  );
-        let y = j.y.mul( &j.z.pow( &CONTEXT.three ).inv() );
+        let z_pow2 = j.z.borrow().mul(&j.z);
+        let z_pow3 = j.z.borrow().mul(&z_pow2);
+        let x = j.x.mul(&z_pow2.inv());
+        let y = j.y.mul( &z_pow3.inv() );
         Point{x,y}
     }
 }
@@ -91,6 +94,9 @@ impl Point {
         }
         let x =  ScalarP::new(BigUint::from_bytes_be(&bytes[..32]));
         let y =  ScalarP::new(BigUint::from_bytes_be(&bytes[32..]));
+        if x.0.is_zero() && y.0.is_zero() {
+            return None;
+        }
         Some(Point {x,y})
     }
 

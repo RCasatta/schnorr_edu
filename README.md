@@ -29,18 +29,12 @@ libsecp256k1 ECDSA which has comparable complexity AFAIK is about a 20 times fas
 ```
 $ cargo bench
 ...
-Schnorr sign            time:   [2.6110 ms 2.6584 ms 2.6702 ms]
-                        change: [+0.1630% +1.4299% +2.7001%] (p = 0.24 > 0.05)
-                        No change in performance detected.
+Schnorr sign            time:   [1.6801 ms 1.6937 ms 1.7061 ms]
 
-Schnorr verify          time:   [9.3913 ms 9.3982 ms 9.4261 ms]
-                        change: [-3.8001% -2.4223% -1.0098%] (p = 0.12 > 0.05)
-                        No change in performance detected.
+Schnorr verify          time:   [5.3759 ms 5.3898 ms 5.4065 ms]
 
 Schnorr 100 Batch verify
-                        time:   [332.42 ms 332.49 ms 332.78 ms]
-                        change: [-1.8245% -0.9584% -0.0778%] (p = 0.17 > 0.05)
-                        No change in performance detected.
+                        time:   [189.05 ms 189.56 ms 190.34 ms]
 ...   
 ```
 
