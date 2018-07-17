@@ -273,14 +273,18 @@ fn benchmark_point(c: &mut Criterion) {
             criterion::black_box(point);
         }));
 
+
+    // TOO SLOW
+    /*
     let points = points_orig.clone();
-    c.bench_function("EC Point  multiplication",move |b|
+    c.bench_function("EC Point multiplication",move |b|
         b.iter(|| {
             let a = thread_rng().choose(&points).unwrap();;
             let sec_key : ScalarN = thread_rng().gen();
             let point = point_mul(a.to_owned(), sec_key.to_owned());
             criterion::black_box(point);
         }));
+     */
 
     c.bench_function("EC Point generator multiplication",move |b|
         b.iter(|| {
@@ -288,7 +292,7 @@ fn benchmark_point(c: &mut Criterion) {
             let point = point_mul(CONTEXT.G.clone(), sec_key.to_owned());
             criterion::black_box(point);
         }));
-
+    let points_orig_affines = points_orig;
 
     let mut points_orig = Vec::new();
     let mut current = None;
@@ -298,6 +302,16 @@ fn benchmark_point(c: &mut Criterion) {
             current.as_ref());
         points_orig.push(current.clone().unwrap());
     }
+
+    let points = points_orig.clone();
+    c.bench_function("EC mixed Point adding",move |b|
+        b.iter(|| {
+            let a = thread_rng().choose(&points_orig_affines).unwrap();
+            let b = thread_rng().choose(&points).unwrap();
+            let point = mixed_point_add(Some(b),Some(a));
+            criterion::black_box(point);
+        }));
+
 
     let points = points_orig.clone();
     c.bench_function("EC Jacobian Point adding",move |b|
@@ -324,6 +338,16 @@ fn benchmark_point(c: &mut Criterion) {
             let point = a.to_owned().mul(&sec_key);
             criterion::black_box(point);
         }));
+
+    let points = points_orig.clone();
+    c.bench_function("EC Jacobian Point mul 4naf",move |b|
+        b.iter(|| {
+            let sec_key : ScalarN = thread_rng().gen();
+            let a = thread_rng().choose(&points).unwrap();;
+            let point = jacobian_point_mul_4naf(a,&sec_key);
+            criterion::black_box(point);
+        }));
+
 
     c.bench_function("G JPoint mul",move |b|
         b.iter(|| {

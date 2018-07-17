@@ -87,9 +87,16 @@ impl JacobianPoint {
     }
 
     pub fn mul(&self, n : &ScalarN) -> Self {
-        jacobian_point_mul(self, n).unwrap()
+        jacobian_point_mul_4naf(self, n).unwrap()
     }
 
+    pub fn negate(self) -> Self{
+        JacobianPoint {
+            x: self.x,
+            y: CONTEXT.p.clone()-&self.y,
+            z: self.z,
+        }
+    }
 }
 
 impl Add for JacobianPoint {
@@ -258,6 +265,41 @@ pub fn jacobian_point_mul( P: &JacobianPoint, n : &ScalarN) -> Option<JacobianPo
     acc
 }
 
+#[allow(non_snake_case)]
+pub fn jacobian_point_mul_4naf( P: &JacobianPoint, n : &ScalarN) -> Option<JacobianPoint> {
+    let vec = n.to_owned().to_wnaf(4);
+
+    let mut precomputed = Vec::new();
+    let two_P = P.double();
+    let three_P = jacobian_point_add(two_P.as_ref(), Some(P));
+    let five_P  = jacobian_point_add(three_P.as_ref(), two_P.as_ref());
+    let seven_P = jacobian_point_add(five_P.as_ref(), two_P.as_ref()).unwrap();
+
+    precomputed.push(seven_P.clone().negate());
+    precomputed.push(five_P.clone().unwrap().negate());
+    precomputed.push(three_P.clone().unwrap().negate());
+    precomputed.push(P.to_owned().negate());
+    precomputed.push(P.to_owned());
+    precomputed.push(three_P.unwrap());
+    precomputed.push(five_P.unwrap());
+    precomputed.push(seven_P);
+
+    let mut acc : Option<JacobianPoint> = None;
+
+    for el in vec.iter() {
+        if acc.is_some() {
+            acc = acc.unwrap().double();
+        }
+
+        if *el != 0i8 {
+            let index = (el+7)/2;
+            acc = jacobian_point_add(acc.as_ref(), precomputed.get(index as usize));
+        }
+    }
+    acc
+}
+
+
 
 #[cfg(test)]
 mod tests {
@@ -307,5 +349,20 @@ mod tests {
         let a = JacobianPoint::from_uncompressed_bytes(&x).unwrap();
         let b = Point::from_bytes(&y).unwrap();
         assert_eq!(b, Point::from(a));
+    }
+
+    #[test]
+    fn test_mul_4naf() {
+        //jacobian_point_mul_4naf
+        let two = ScalarN(BigUint::from(2u32));
+
+        let option = jacobian_point_mul_4naf(&CONTEXT.G_jacobian, &two);
+        assert_eq!(CONTEXT.G_jacobian.clone().double(), option);
+
+        let n : ScalarN = thread_rng().gen();
+        let option = jacobian_point_mul_4naf(&CONTEXT.G_jacobian, &n);
+        assert_eq!(generator_mul(&n), option);
+
+
     }
 }

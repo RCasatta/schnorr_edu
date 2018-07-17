@@ -109,6 +109,13 @@ impl Point {
     pub fn mul(self, n : &ScalarN) -> Point {
         point_mul(self, n.to_owned()).unwrap()
     }
+
+    pub fn negate(self) -> Self {
+        Point {
+            x: self.x,
+            y: CONTEXT.p.borrow()-&self.y,
+        }
+    }
 }
 
 impl Add for Point {
@@ -149,22 +156,19 @@ pub fn point_add(p1 : Option<Point>, p2 : Option<Point>) -> Option<Point> {
             }
             let lam = if  p1 == p2 {
                 // lam = (3 * p1[0] * p1[0] * pow(2 * p1[1], p - 2, p)) % p
-                let pow = p1.y.clone().mul(&CONTEXT.two).inv();
-                CONTEXT.three.clone().mul(&p1.x).mul(&p1.x).mul(&pow)
+                let inv = p1.y.borrow().mul(&CONTEXT.two).inv();
+                CONTEXT.three.clone().mul(&p1.x).mul(&p1.x).mul(&inv)
             } else {
                 // lam = ((p2[1] - p1[1]) * pow(p2[0] - p1[0], p - 2, p)) % p
-                let pow = p2.x.clone().sub(&p1.x).inv();
-                p2.y.clone().sub(&p1.y.clone()).mul(&pow)
-
-                //let pow = finite_sub( p2.x.clone(), &p1.x, &CONTEXT.p).modpow(&CONTEXT.p_sub2, &CONTEXT.p);
-                //finite_sub( p2.y.clone(), &p1.y, &CONTEXT.p ).mul(pow).rem(&CONTEXT.p)
+                let inv = p2.x.borrow().sub(&p1.x).inv();
+                p2.y.clone().sub(&p1.y.clone()).mul(&inv)
             };
             // x3 = (lam * lam - p1[0] - p2[0]) % p
-            let x3 = lam.pow(&CONTEXT.two).sub(&p1.x).sub(&p2.x);
+            let x3 = lam.borrow().mul(&lam).sub(&p1.x).sub(&p2.x);
 
 
             //(x3, (lam * (p1[0] - x3) - p1[1]) % p)
-            let sub = p1.x.clone().sub(&x3);
+            let sub = p1.x.borrow().sub(&x3);
             let y3 = lam.mul(&sub).sub(&p1.y);
 
             Some(Point{x:x3,y:y3})
@@ -214,6 +218,15 @@ mod tests {
         assert!(&CONTEXT.p.0.is_odd());
     }
 
+
+    #[test]
+    fn test_negate() {
+        let g2 = CONTEXT.G_jacobian.double().unwrap();
+        let g2_bis = point_add(Some(CONTEXT.G.clone()), Some(CONTEXT.G.clone())).unwrap();
+
+        let g2_back = Point::from(g2.negate());
+        assert_eq!(g2_bis.negate(), g2_back);
+    }
 
     #[test]
     fn test_point() {

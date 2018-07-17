@@ -52,9 +52,18 @@ impl<'a> Sub<&'a ScalarP> for ScalarP {
     type Output = ScalarP;
 
     fn sub(self, other: &ScalarP) -> ScalarP {
-        ScalarP::new(finite_sub(self.0, &other.0, &CONTEXT.p.0))
+        ScalarP::new(finite_sub(&self.0, &other.0, &CONTEXT.p.0))
     }
 }
+
+impl<'a, 'b> Sub<&'b ScalarP> for &'a ScalarP {
+    type Output = ScalarP;
+
+    fn sub(self, other: &'b ScalarP) -> ScalarP {
+        ScalarP::new(finite_sub(&self.0, &other.0, &CONTEXT.p.0))
+    }
+}
+
 impl<'a> Add<&'a ScalarP> for ScalarP {
     type Output = ScalarP;
 

@@ -9,11 +9,11 @@ pub mod scalar_n;
 pub mod scalar_p;
 
 
-fn finite_sub(a : BigUint, b : &BigUint, p_or_n : &BigUint) -> BigUint{
-    if a > *b {
+fn finite_sub(a : &BigUint, b : &BigUint, p_or_n : &BigUint) -> BigUint{
+    if a > b {
         a.sub(b)
     } else {
-        finite_sub(a.add(p_or_n), b, p_or_n)
+        finite_sub(&a.add(p_or_n), b, p_or_n)
     }
 }
 
