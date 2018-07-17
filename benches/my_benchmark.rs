@@ -153,6 +153,8 @@ fn benchmark_verify(c: &mut Criterion) {
         assert!(result);
     } ));
 
+    //TOO SLOW
+    /*
     let signatures = signatures_orig.clone();
     let pub_keys = pub_keys_orig.clone();
     c.bench_function("Old schnorr aff verify",move |b| b.iter(|| {
@@ -161,6 +163,7 @@ fn benchmark_verify(c: &mut Criterion) {
         criterion::black_box(result);
         assert!(result);
     } ));
+    */
 }
 
 
@@ -230,6 +233,8 @@ fn benchmark_sign(c: &mut Criterion) {
 
         }));
 
+    // TOO SLOW
+    /*
     let mut rng = thread_rng();
     let mut msg = [0u8;32];
     c.bench_function("Old schnorr aff sign",move |b|
@@ -238,8 +243,8 @@ fn benchmark_sign(c: &mut Criterion) {
             let sec_key= rng.gen();
             let signature = old::schnorr_sign(&msg, &sec_key);
             criterion::black_box(signature);
-
         }));
+    */
 
     let mut rng = rand::thread_rng();
     let secp = Secp256k1::new();
@@ -332,7 +337,7 @@ fn benchmark_point(c: &mut Criterion) {
         b.iter(|| {
             let sec_key : ScalarN = thread_rng().gen();
             let a = thread_rng().choose(&points).unwrap();;
-            let point = a.to_owned().mul(&sec_key);
+            let point = jacobian_point_mul(a,&sec_key);
             criterion::black_box(point);
         }));
 
@@ -391,25 +396,6 @@ fn benchmark_point(c: &mut Criterion) {
             criterion::black_box(point);
         }));
 
-    c.bench_function("G JPoint 2mul",move |b|
-        b.iter(|| {
-            let sec_key1 : ScalarN = thread_rng().gen();
-            let sec_key2 : ScalarN = thread_rng().gen();
-            let point1 = generator_mul(&sec_key1).unwrap();
-            let point2 = generator_mul(&sec_key2).unwrap();
-            criterion::black_box(point1);
-            criterion::black_box(point2);
-        }));
-
-    c.bench_function("G JPoint 2mul combined",move |b|
-        b.iter(|| {
-            let sec_key1 : ScalarN = thread_rng().gen();
-            let sec_key2 : ScalarN = thread_rng().gen();
-            let (point1, point2) = generator_mul_combined(&sec_key1,&sec_key2);
-            criterion::black_box(point1);
-            criterion::black_box(point2);
-        }));
-
     let points = points_orig.clone();
     c.bench_function("EC JPoint kP+lQ",move |b|
         b.iter(|| {
@@ -440,7 +426,7 @@ fn benchmark_point(c: &mut Criterion) {
 
 criterion_group!{
     name = benches;
-    config = Criterion::default().sample_size(10);
+    config = Criterion::default();
     //config = Criterion::default().sample_size(2).without_plots();
     targets = benchmark_biguint, benchmark_point, benchmark_verify, benchmark_batch_verify, benchmark_sign
 }

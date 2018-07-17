@@ -201,31 +201,6 @@ pub fn jacobian_point_add(p1 : Option<&JacobianPoint>, p2 : Option<&JacobianPoin
     }
 }
 
-pub fn generator_mul_combined(n1 : &ScalarN,n2 : &ScalarN) -> (Option<JacobianPoint>,Option<JacobianPoint>) {
-    let mut acc1 : Option<JacobianPoint> = None;
-    let mut acc2 : Option<JacobianPoint> = None;
-    let mut _junk1 : Option<JacobianPoint> = None;
-    let mut _junk2 : Option<JacobianPoint> = None;
-    for (i,(byte1,byte2)) in n1.0.to_bytes_le().iter().zip(n2.0.to_bytes_le().iter()).enumerate() {
-        let index = i * 256usize;
-        let index1 = index + usize::from(*byte1);
-        let index2 = index + usize::from(*byte2);
-        //the benefit of calculating together should come from the locality of the cache
-        let point1 = G_MUL_CACHE.get(index1);
-        let point2 = G_MUL_CACHE.get(index2);
-        if *byte1 != 0u8 {
-            acc1 = mixed_point_add(acc1.as_ref(), point1);
-        } else {
-            _junk1 = mixed_point_add(acc1.as_ref(), Some(&CONTEXT.G));
-        }
-        if *byte2 != 0u8 {
-            acc2 = mixed_point_add(acc2.as_ref(), point2);
-        } else {
-            _junk2 = mixed_point_add(acc2.as_ref(), Some(&CONTEXT.G));
-        }
-    }
-    (acc1,acc2)
-}
 
 pub fn generator_mul(n : &ScalarN) -> Option<JacobianPoint> {
     let mut acc : Option<JacobianPoint> = None;
