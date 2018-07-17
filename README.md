@@ -24,11 +24,11 @@ cargo test --release
 ## Benchmark
 
 When I say non efficient I really mean it!
-libsecp256k1 ECDSA which has comparable complexity AFAIK is about a 20 times faster!
+libsecp256k1 Schnorr (pre-standard AFAIK) is about a 16 times faster!
 
 ```
-$ cargo bench
-...
+$ cargo bench | grep time # sorted manually from faster to slower
+
 BigUint checked_sub     time:   [59.581 ns 59.591 ns 59.606 ns]
 ScalarP mul one         time:   [97.895 ns 97.904 ns 97.913 ns]
 BigUint mul assign      time:   [146.50 ns 146.53 ns 146.57 ns]
@@ -59,7 +59,6 @@ EC JPoint kP+lQ shamir  time:   [5.2714 ms 5.2748 ms 5.2786 ms]
 EC JPoint kP+lQ         time:   [8.3215 ms 8.3273 ms 8.3332 ms]
 Schnorr 100 B verify    time:   [153.72 ms 153.74 ms 153.76 ms]
 
-...   
 ```
 
-On My mid 2014 Mac Book Pro
+Run on my threadripper 1950X
