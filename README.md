@@ -29,6 +29,8 @@ libsecp256k1 Schnorr (pre-standard AFAIK) is about a 16 times faster!
 ```
 $ cargo bench | grep time # sorted manually from faster to slower
 
+BigUint rand            time:   [27.142 ns 27.174 ns 27.208 ns]
+BigUint cmp             time:   [36.984 ns 36.997 ns 37.015 ns]
 BigUint checked_sub     time:   [59.581 ns 59.591 ns 59.606 ns]
 ScalarP mul one         time:   [97.895 ns 97.904 ns 97.913 ns]
 BigUint mul assign      time:   [146.50 ns 146.53 ns 146.57 ns]
@@ -38,8 +40,6 @@ BigUint modpow 2        time:   [1.7779 us 1.7788 us 1.7797 us]
 EC Jac Point double     time:   [8.1594 us 8.1608 us 8.1623 us]
 EC mixed Point adding   time:   [12.059 us 12.061 us 12.064 us]
 EC Jac Point add        time:   [16.682 us 16.685 us 16.688 us]
-BigUint rand            time:   [27.142 ns 27.174 ns 27.208 ns]
-BigUint cmp             time:   [36.984 ns 36.997 ns 37.015 ns]
 ScalarP modpow one      time:   [53.067 us 53.102 us 53.133 us]
 Schnorr libsecp sign    time:   [91.489 us 91.501 us 91.513 us]
 ScalarP inv             time:   [146.66 us 146.70 us 146.74 us]
