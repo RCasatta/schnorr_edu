@@ -195,6 +195,8 @@ fn benchmark_batch_verify(c: &mut Criterion) {
         messages_orig.push(msg);
     }
 
+    // TOO SLOW
+    /*
     let signatures = signatures_orig.clone();
     let pub_keys = pub_keys_orig.clone();
     let messages = messages_orig.clone();
@@ -203,11 +205,12 @@ fn benchmark_batch_verify(c: &mut Criterion) {
         criterion::black_box(result);
         assert!(result);
     } ));
+    */
 
     let signatures = signatures_orig.clone();
     let pub_keys = pub_keys_orig.clone();
     let messages = messages_orig.clone();
-    c.bench_function("Schnorr 100 Batch verify",move |b| b.iter(|| {
+    c.bench_function("Schnorr 100 B verify",move |b| b.iter(|| {
         let result = schnorr_batch_verify(&messages, &pub_keys, &signatures);
         criterion::black_box(result);
         assert!(result);
@@ -286,12 +289,6 @@ fn benchmark_point(c: &mut Criterion) {
         }));
      */
 
-    c.bench_function("EC Point generator multiplication",move |b|
-        b.iter(|| {
-            let sec_key : ScalarN = thread_rng().gen();
-            let point = point_mul(CONTEXT.G.clone(), sec_key.to_owned());
-            criterion::black_box(point);
-        }));
     let points_orig_affines = points_orig;
 
     let mut points_orig = Vec::new();
@@ -314,7 +311,7 @@ fn benchmark_point(c: &mut Criterion) {
 
 
     let points = points_orig.clone();
-    c.bench_function("EC Jacobian Point adding",move |b|
+    c.bench_function("EC Jac Point add",move |b|
         b.iter(|| {
             let a = thread_rng().choose(&points).unwrap();
             let b = thread_rng().choose(&points).unwrap();
@@ -323,7 +320,7 @@ fn benchmark_point(c: &mut Criterion) {
         }));
 
     let points = points_orig.clone();
-    c.bench_function("EC Jacobian Point doubling",move |b|
+    c.bench_function("EC Jac Point double",move |b|
         b.iter(|| {
             let a = thread_rng().choose(&points).unwrap();;
             let point = a.to_owned().double();
@@ -331,7 +328,7 @@ fn benchmark_point(c: &mut Criterion) {
         }));
 
     let points = points_orig.clone();
-    c.bench_function("EC Jacobian Point mul",move |b|
+    c.bench_function("EC Jac Point mul",move |b|
         b.iter(|| {
             let sec_key : ScalarN = thread_rng().gen();
             let a = thread_rng().choose(&points).unwrap();;
