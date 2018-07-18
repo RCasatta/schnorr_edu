@@ -46,8 +46,8 @@ impl From<JacobianPoint> for Point {
 impl Point {
 
     pub fn on_curve(&self) -> bool {
-        let pow1 = self.y.pow(&CONTEXT.two);
-        let pow2 = self.x.pow(&CONTEXT.three);
+        let pow1 = self.y.borrow().mul(&self.y);
+        let pow2 = self.x.borrow().mul(&self.x).mul(&self.x);
         let sub = pow1.sub(&pow2);
 
         sub % &CONTEXT.p == CONTEXT.seven

@@ -42,7 +42,7 @@ impl ScalarP {
         ScalarP(self.0.modpow(&CONTEXT.p_sub2.0, &CONTEXT.p.0))
     }
 
-    pub fn is_jacobi(&self) -> bool {
+    pub fn jacobi(&self) -> bool {
         //TODO improve here
         self.pow(&CONTEXT.p_sub1_div2).0.is_one()
     }

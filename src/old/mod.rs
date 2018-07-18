@@ -24,7 +24,7 @@ pub fn schnorr_sign(msg : &Msg, sec_key: &ScalarN) -> Signature {
     let sec_key_bytes = sec_key.to_32_bytes();
     let mut k = concat_and_hash(&sec_key_bytes, msg, &vec![]);
     let R = CONTEXT.G.clone().mul( &k);
-    if !R.y.is_jacobi() {
+    if !R.y.jacobi() {
         k = CONTEXT.n.clone().sub(k);
     }
     let Rx = R.x.to_32_bytes();
@@ -62,7 +62,7 @@ pub fn schnorr_verify(msg : &Msg, pub_key: &Point, signature: &Signature) -> boo
         return false;
     }
 
-    if !R.y.is_jacobi() {
+    if !R.y.jacobi() {
         return false
     }
 

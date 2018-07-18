@@ -97,6 +97,10 @@ impl JacobianPoint {
             z: self.z,
         }
     }
+
+    pub fn jacobi(&self) -> bool {
+        self.y.borrow().mul(&self.z).0.is_one()
+    }
 }
 
 impl Add for JacobianPoint {

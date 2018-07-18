@@ -28,6 +28,7 @@ use point::{Point, JacobianPoint};
 use context::CONTEXT;
 use rand::thread_rng;
 use rand::Rng;
+use std::borrow::Borrow;
 
 type Msg = [u8;32];
 
@@ -40,7 +41,7 @@ pub fn schnorr_sign(msg : &Msg, sec_key: &ScalarN) -> Signature {
     let mut k = concat_and_hash(&sec_key_bytes, msg, &vec![]);
     let R_jacobian = generator_mul(&k).unwrap();
     let R = Point::from(R_jacobian);
-    if !R.y.is_jacobi() {
+    if !R.y.jacobi() {
         k = CONTEXT.n.clone().sub(k);
     }
     let Rx = R.x.to_32_bytes();
@@ -71,14 +72,18 @@ pub fn schnorr_verify(msg : &Msg, pub_key: &Point, signature: &Signature) -> boo
     if R.is_none() {
         return false;
     }
-    let R = Point::from(R.unwrap());
+    let R = R.unwrap();
 
-    if R.x != signature.Rx {
+    // jacobi(y(P)) can be implemented as jacobi(yz mod p).
+    if !(R.y.borrow().mul(&R.z)).jacobi() {
         return false;
     }
 
-    if !R.y.is_jacobi() {
-        return false
+    // x(P) ≠ r can be implemented as x ≠ z^2r mod p.
+    let Rx = R.z.borrow().mul(&R.z).mul(&signature.Rx );
+
+    if R.x != Rx {
+        return false;
     }
 
     true
@@ -176,25 +181,29 @@ mod tests {
 
         let mut msg = [0u8;32];
 
-        for _ in 0..4 {
+        for i in 0..10 {
             rng.fill_bytes(&mut msg);
             let sec_key = rng.gen::<ScalarN>();
             let pub_key : Point = generator_mul(&sec_key).unwrap().into();
             let signature = schnorr_sign(&msg, &sec_key);
             let result = schnorr_verify(&msg, &pub_key, &signature);
             assert!(result);
-            let result = old::schnorr_verify(&msg, &pub_key, &signature);
-            assert!(result);
+            if i==0 {  // too slow to do it every time
+                let result = old::schnorr_verify(&msg, &pub_key, &signature);
+                assert!(result);
+            }
 
             messages.push(msg);
             pub_keys.push(pub_key);
             signatures.push(signature);
         }
         assert!(schnorr_batch_verify(&messages, &pub_keys, &signatures));
-        assert!(old::schnorr_batch_verify(&messages, &pub_keys, &signatures));
+        assert!(old::schnorr_batch_verify(&messages[..2].to_vec(),
+                                          &pub_keys[..2].to_vec(),
+                                          &signatures[..2].to_vec()));
         messages.pop();
         messages.push([0u8;32]);
-        assert!(!old::schnorr_batch_verify(&messages, &pub_keys, &signatures));
+        assert!(!schnorr_batch_verify(&messages, &pub_keys, &signatures));
     }
 
     #[test]
