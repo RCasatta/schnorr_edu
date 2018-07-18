@@ -88,11 +88,11 @@ impl Distribution<ScalarN> for Standard {
 */
 impl ScalarN {
     pub fn to_wnaf(self, w : i8) -> Vec<i8> {
-        assert!(w>1 && w<7);
+        assert!(w>1 && w<8);
 
         let mut d = BigInt::from(self.0);
         let mut naf = Vec::with_capacity(256usize);
-        let two_raised_w = BigInt::from(2i8.pow(w as u32));
+        let two_raised_w = BigInt::from(2i16.pow(w as u32));
         let two_raised_w_sub1 = BigInt::from(2i8.pow( (w-1) as u32));
         while !d.is_zero() {
             if d.is_odd() {
@@ -152,9 +152,12 @@ mod tests {
         assert_eq!(expected.to_vec(), naf);
         assert_eq!(n , ScalarN::from_naf(naf));
 
-        for i in 1..160u32 {
+        for i in 1..100u32 {
             let n = ScalarN(BigUint::from(i));
 
+            assert_eq!(n.clone() , ScalarN::from_naf(n.clone().to_wnaf(7)));
+            assert_eq!(n.clone() , ScalarN::from_naf(n.clone().to_wnaf(6)));
+            assert_eq!(n.clone() , ScalarN::from_naf(n.clone().to_wnaf(5)));
             assert_eq!(n.clone() , ScalarN::from_naf(n.clone().to_wnaf(4)));
             assert_eq!(n.clone() , ScalarN::from_naf(n.clone().to_wnaf(3)));
             assert_eq!(n.clone() , ScalarN::from_naf(n.clone().to_wnaf(2)));

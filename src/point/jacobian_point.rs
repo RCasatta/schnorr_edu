@@ -216,6 +216,8 @@ pub fn generator_mul(n : &ScalarN) -> Option<JacobianPoint> {
             acc  = mixed_point_add(acc.as_ref(), point);
         }  else {
             // the purpose of this arm is to try to achieve constant time
+            // who knows if the compiler removes it, however you should not read this
+            // this lib is totally unsecure
             _junk = mixed_point_add(acc.as_ref(), Some(&CONTEXT.G));
         }
     }
@@ -246,7 +248,7 @@ pub fn jacobian_point_mul( P: &JacobianPoint, n : &ScalarN) -> Option<JacobianPo
 
 #[allow(non_snake_case)]
 pub fn jacobian_point_mul_wnaf( P: &JacobianPoint, n : &ScalarN, w:i8) -> Option<JacobianPoint> {
-    assert!(w>1 && w<7);
+    assert!(w>1 && w<8);
     let vec = n.to_owned().to_wnaf(w);
     let times = 2i8.pow( w as u32 - 2 );
     let mut positives = Vec::new();
@@ -360,5 +362,9 @@ mod tests {
         let option = jacobian_point_mul_wnaf(&CONTEXT.G_jacobian, &n, 6i8);
         assert_eq!(generator_mul(&n), option);
 
+        let option = jacobian_point_mul_wnaf(&CONTEXT.G_jacobian, &n, 7i8);
+        assert_eq!(generator_mul(&n), option);
+
     }
+
 }

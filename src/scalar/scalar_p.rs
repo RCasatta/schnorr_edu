@@ -38,12 +38,10 @@ impl ScalarP {
         ScalarP(self.0.modpow(&n.0, &CONTEXT.p.0))
     }
     pub fn inv(&self) -> Self {
-        //TODO improve here
         ScalarP(self.0.modpow(&CONTEXT.p_sub2.0, &CONTEXT.p.0))
     }
 
     pub fn jacobi(&self) -> bool {
-        //TODO improve here
         self.pow(&CONTEXT.p_sub1_div2).0.is_one()
     }
 

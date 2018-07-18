@@ -23,6 +23,10 @@ use secp256k1::Message;
 use secp256k1::key::SecretKey;
 use schnorr_edu::util::shamir::shamirs_trick;
 use num_traits::One;
+use criterion::ParameterizedBenchmark;
+use criterion::Throughput;
+use criterion::PlotConfiguration;
+use criterion::AxisScale;
 
 
 fn benchmark_biguint(c: &mut Criterion) {
@@ -167,19 +171,6 @@ fn benchmark_verify(c: &mut Criterion) {
 }
 
 
-/*
-10
-Batch verify jacobi     time:   [264.86 ms 265.00 ms 265.03 ms]
-Batch optimized verify  time:   [59.207 ms 59.237 ms 59.358 ms]
-
-100
-Batch verify jacobi     time:   [2.6879 s 2.7212 s 2.7295 s]
-Batch optimized verify  time:   [337.70 ms 338.14 ms 339.89 ms]
-
-1000
-Batch verify jacobi     time:   [28.937 s 29.282 s 30.664 s]
-Batch optimized verify  time:   [2.4873 s 2.4999 s 2.5030 s]
-*/
 
 fn benchmark_batch_verify(c: &mut Criterion) {
     let mut rng = thread_rng();
@@ -187,12 +178,12 @@ fn benchmark_batch_verify(c: &mut Criterion) {
     let mut signatures_orig = Vec::new();
     let mut pub_keys_orig = Vec::new();
     let mut messages_orig = Vec::new();
-    let precomputed_signatures= 100usize;
+    let precomputed_signatures= 1000usize;
     for _ in 0..precomputed_signatures {
         let sec_key = rng.gen();
         rng.fill_bytes(&mut msg);
         let signature = schnorr_sign(&msg, &sec_key);
-        let pub_key = point_mul(CONTEXT.G.clone(), sec_key).unwrap();
+        let pub_key:Point = generator_mul(&sec_key).unwrap().into();
         signatures_orig.push(signature);
         pub_keys_orig.push(pub_key);
         messages_orig.push(msg);
@@ -213,11 +204,30 @@ fn benchmark_batch_verify(c: &mut Criterion) {
     let signatures = signatures_orig.clone();
     let pub_keys = pub_keys_orig.clone();
     let messages = messages_orig.clone();
-    c.bench_function("Schnorr 100 B verify",move |b| b.iter(|| {
-        let result = schnorr_batch_verify(&messages, &pub_keys, &signatures);
+    let plot_config = PlotConfiguration::default()
+        .summary_scale(AxisScale::Logarithmic);
+    let benchmark = ParameterizedBenchmark::new("Schnorr Batch Ver", move|b, &&size|
+        b.iter(||  {
+            let result = schnorr_batch_verify(&messages[..size].to_vec(),
+                                              &pub_keys[..size].to_vec(),
+                                              &signatures[..size].to_vec());
+            criterion::black_box(result);
+            assert!(result);
+        }), &[10, 20, 40, 80, 160, 320, 640])
+        .throughput(|size| Throughput::Elements(**size as u32))
+        .plot_config(plot_config);
+
+    c.bench("Schnorr Batch Ver", benchmark);
+
+    /*
+    c.bench_function_over_inputs("Schnorr Batch Ver",move |b, &&size| b.iter(|| {
+        let result = schnorr_batch_verify(&messages[..size].to_vec(),
+                                          &pub_keys[..size].to_vec(),
+                                          &signatures[..size].to_vec());
         criterion::black_box(result);
         assert!(result);
-    } ));
+    } ), &[10, 100, 1000]);
+    */
 }
 
 
@@ -343,50 +353,15 @@ fn benchmark_point(c: &mut Criterion) {
 
 
     let points = points_orig.clone();
-    c.bench_function("EC Jac P mul 2naf",move |b|
-        b.iter(|| {
+    let benchmark = ParameterizedBenchmark::new("EC Jac P mul wnaf", move|b, &&size|
+        b.iter(||  {
             let sec_key : ScalarN = thread_rng().gen();
             let a = thread_rng().choose(&points).unwrap();;
-            let point = jacobian_point_mul_wnaf(a,&sec_key, 2i8);
+            let point = jacobian_point_mul_wnaf(a,&sec_key, size);
             criterion::black_box(point);
-        }));
+        }), &[2i8,3,4,5,6,7]);
 
-    let points = points_orig.clone();
-    c.bench_function("EC Jac P mul 3naf",move |b|
-        b.iter(|| {
-            let sec_key : ScalarN = thread_rng().gen();
-            let a = thread_rng().choose(&points).unwrap();;
-            let point = jacobian_point_mul_wnaf(a,&sec_key, 3i8);
-            criterion::black_box(point);
-        }));
-
-    let points = points_orig.clone();
-    c.bench_function("EC Jac P mul 4naf",move |b|
-        b.iter(|| {
-            let sec_key : ScalarN = thread_rng().gen();
-            let a = thread_rng().choose(&points).unwrap();;
-            let point = jacobian_point_mul_wnaf(a,&sec_key, 4i8);
-            criterion::black_box(point);
-        }));
-
-    let points = points_orig.clone();
-    c.bench_function("EC Jac P mul 5naf",move |b|
-        b.iter(|| {
-            let sec_key : ScalarN = thread_rng().gen();
-            let a = thread_rng().choose(&points).unwrap();;
-            let point = jacobian_point_mul_wnaf(a,&sec_key, 5i8);
-            criterion::black_box(point);
-        }));
-
-    let points = points_orig.clone();
-    c.bench_function("EC Jac P mul 6naf",move |b|
-        b.iter(|| {
-            let sec_key : ScalarN = thread_rng().gen();
-            let a = thread_rng().choose(&points).unwrap();;
-            let point = jacobian_point_mul_wnaf(a,&sec_key, 6i8);
-            criterion::black_box(point);
-        }));
-
+    c.bench("EC Jac P mul wnaf", benchmark);
 
 
     c.bench_function("G JPoint mul",move |b|
@@ -426,7 +401,7 @@ fn benchmark_point(c: &mut Criterion) {
 
 criterion_group!{
     name = benches;
-    config = Criterion::default();
+    config = Criterion::default().sample_size(10);
     //config = Criterion::default().sample_size(2).without_plots();
     targets = benchmark_biguint, benchmark_point, benchmark_verify, benchmark_batch_verify, benchmark_sign
 }

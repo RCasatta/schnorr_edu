@@ -62,7 +62,7 @@ pub fn schnorr_verify(msg : &Msg, pub_key: &Point, signature: &Signature) -> boo
     let signature_bytes = signature.as_bytes();
     let r = BigUint::from_bytes_be(&signature_bytes[..32]);
     let s = BigUint::from_bytes_be(&signature_bytes[32..]);
-    if r >= CONTEXT.p.0 || s >= CONTEXT.n.0 {  // TODO Probably can't happen since ScalarN always < N
+    if r >= CONTEXT.p.0 || s >= CONTEXT.n.0 {
         return false;
     }
     let e = concat_and_hash(&signature_bytes[..32], &pub_key.as_bytes()[..], msg);
