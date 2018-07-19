@@ -1,0 +1,369 @@
+
+running 21 tests
+test context::tests::test_lazy_static ... ignored
+test context::tests::test_load_big ... ignored
+test point::jacobian_point::tests::test_conversion ... ignored
+test point::jacobian_point::tests::test_generator_mul ... ignored
+test point::jacobian_point::tests::test_mul_wnaf ... ignored
+test point::jacobian_point::tests::test_serialize ... ignored
+test point::point::tests::test_negate ... ignored
+test point::point::tests::test_point ... ignored
+test point::point::tests::text_context_mul_and_add ... ignored
+test scalar::scalar_n::tests::test_naf ... ignored
+test scalar::scalar_p::tests::test_borrow ... ignored
+test scalar::scalar_p::tests::test_inv ... ignored
+test scalar::tests::test_apint ... ignored
+test scalar::tests::test_rug ... ignored
+test tests::test_bip_sign ... ignored
+test tests::test_bip_verify ... ignored
+test tests::test_sign_and_jacobi_sign ... ignored
+test tests::test_sign_and_verify ... ignored
+test util::shamir::tests::test_double ... ignored
+test util::shamir::tests::test_shamir ... ignored
+test util::term::tests::test_heap ... ignored
+
+test result: ok. 0 passed; 0 failed; 21 ignored; 0 measured; 0 filtered out
+
+Benchmarking BigUint modpow
+Benchmarking BigUint modpow: Warming up for 3.0000 s
+Benchmarking BigUint modpow: Collecting 10 samples in estimated 5.0005 s (371k iterations)
+Benchmarking BigUint modpow: Analyzing
+BigUint modpow          time:   [13.354 us 13.396 us 13.444 us]
+                        change: [-95.507% -95.403% -95.313%] (p = 0.00 < 0.05)
+                        Performance has improved.
+
+Benchmarking ScalarP modpow one
+Benchmarking ScalarP modpow one: Warming up for 3.0000 s
+Benchmarking ScalarP modpow one: Collecting 10 samples in estimated 5.0005 s (380k iterations)
+Benchmarking ScalarP modpow one: Analyzing
+ScalarP modpow one      time:   [13.075 us 13.180 us 13.318 us]
+                        change: [-78.755% -78.426% -78.108%] (p = 0.00 < 0.05)
+                        Performance has improved.
+
+Benchmarking ScalarP mul one
+Benchmarking ScalarP mul one: Warming up for 3.0000 s
+Benchmarking ScalarP mul one: Collecting 10 samples in estimated 5.0000 s (13M iterations)
+Benchmarking ScalarP mul one: Analyzing
+ScalarP mul one         time:   [370.45 ns 377.98 ns 388.51 ns]
+                        change: [+218.82% +227.74% +238.07%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 1 outliers among 10 measurements (10.00%)
+  1 (10.00%) high mild
+
+Benchmarking ScalarP inv
+Benchmarking ScalarP inv: Warming up for 3.0000 s
+Benchmarking ScalarP inv: Collecting 10 samples in estimated 5.0007 s (313k iterations)
+Benchmarking ScalarP inv: Analyzing
+ScalarP inv             time:   [15.282 us 15.643 us 15.886 us]
+                        change: [-89.978% -89.808% -89.625%] (p = 0.00 < 0.05)
+                        Performance has improved.
+
+Benchmarking BigUint modpow 2
+Benchmarking BigUint modpow 2: Warming up for 3.0000 s
+Benchmarking BigUint modpow 2: Collecting 10 samples in estimated 5.0000 s (11M iterations)
+Benchmarking BigUint modpow 2: Analyzing
+BigUint modpow 2        time:   [441.48 ns 447.58 ns 453.61 ns]
+                        change: [-80.230% -80.008% -79.787%] (p = 0.00 < 0.05)
+                        Performance has improved.
+
+Benchmarking BigUint sub
+Benchmarking BigUint sub: Warming up for 3.0000 s
+Benchmarking BigUint sub: Collecting 10 samples in estimated 5.0000 s (19M iterations)
+Benchmarking BigUint sub: Analyzing
+BigUint sub             time:   [260.56 ns 263.35 ns 267.22 ns]
+Found 1 outliers among 10 measurements (10.00%)
+  1 (10.00%) high severe
+
+Benchmarking BigUint mul
+Benchmarking BigUint mul: Warming up for 3.0000 s
+Benchmarking BigUint mul: Collecting 10 samples in estimated 5.0000 s (19M iterations)
+Benchmarking BigUint mul: Analyzing
+BigUint mul             time:   [249.30 ns 253.41 ns 256.36 ns]
+                        change: [+49.960% +53.571% +56.814%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 3 outliers among 10 measurements (30.00%)
+  1 (10.00%) low mild
+  2 (20.00%) high mild
+
+Benchmarking BigUint mul assign
+Benchmarking BigUint mul assign: Warming up for 3.0000 s
+Benchmarking BigUint mul assign: Collecting 10 samples in estimated 5.0000 s (19M iterations)
+Benchmarking BigUint mul assign: Analyzing
+BigUint mul assign      time:   [257.07 ns 265.35 ns 272.44 ns]
+                        change: [+0.1493% +6.5117% +15.593%] (p = 0.14 > 0.05)
+                        No change in performance detected.
+Found 2 outliers among 10 measurements (20.00%)
+  1 (10.00%) high mild
+  1 (10.00%) high severe
+
+Benchmarking BigUint div
+Benchmarking BigUint div: Warming up for 3.0000 s
+Benchmarking BigUint div: Collecting 10 samples in estimated 5.0000 s (126M iterations)
+Benchmarking BigUint div: Analyzing
+BigUint div             time:   [39.408 ns 39.685 ns 40.021 ns]
+                        change: [-83.003% -82.828% -82.647%] (p = 0.00 < 0.05)
+                        Performance has improved.
+
+Benchmarking BigUint rem
+Benchmarking BigUint rem: Warming up for 3.0000 s
+Benchmarking BigUint rem: Collecting 10 samples in estimated 5.0000 s (126M iterations)
+Benchmarking BigUint rem: Analyzing
+BigUint rem             time:   [39.007 ns 39.267 ns 39.609 ns]
+                        change: [-83.184% -83.007% -82.813%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 1 outliers among 10 measurements (10.00%)
+  1 (10.00%) high mild
+
+Benchmarking BigUint rand
+Benchmarking BigUint rand: Warming up for 3.0000 s
+Benchmarking BigUint rand: Collecting 10 samples in estimated 5.0000 s (162M iterations)
+Benchmarking BigUint rand: Analyzing
+BigUint rand            time:   [31.056 ns 31.448 ns 31.895 ns]
+                        change: [+10.368% +11.940% +13.469%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+
+Benchmarking BigUint cmp
+Benchmarking BigUint cmp: Warming up for 3.0000 s
+Benchmarking BigUint cmp: Collecting 10 samples in estimated 5.0000 s (112M iterations)
+Benchmarking BigUint cmp: Analyzing
+BigUint cmp             time:   [44.852 ns 45.448 ns 45.882 ns]
+                        change: [-8.9234% -7.2472% -5.6441%] (p = 0.00 < 0.05)
+                        Performance has improved.
+
+Benchmarking EC Point adding
+Benchmarking EC Point adding: Warming up for 3.0000 s
+Benchmarking EC Point adding: Collecting 10 samples in estimated 5.0008 s (278k iterations)
+Benchmarking EC Point adding: Analyzing
+EC Point adding         time:   [17.729 us 18.012 us 18.233 us]
+                        change: [-88.857% -88.630% -88.413%] (p = 0.00 < 0.05)
+                        Performance has improved.
+
+Benchmarking EC mixed Point adding
+Benchmarking EC mixed Point adding: Warming up for 3.0000 s
+Benchmarking EC mixed Point adding: Collecting 10 samples in estimated 5.0003 s (832k iterations)
+Benchmarking EC mixed Point adding: Analyzing
+EC mixed Point adding   time:   [6.1813 us 6.2382 us 6.3261 us]
+                        change: [-59.592% -58.993% -58.469%] (p = 0.00 < 0.05)
+                        Performance has improved.
+
+Benchmarking EC Jac Point add
+Benchmarking EC Jac Point add: Warming up for 3.0000 s
+Benchmarking EC Jac Point add: Collecting 10 samples in estimated 5.0000 s (707k iterations)
+Benchmarking EC Jac Point add: Analyzing
+EC Jac Point add        time:   [6.9440 us 7.0230 us 7.1180 us]
+                        change: [-67.380% -67.021% -66.643%] (p = 0.00 < 0.05)
+                        Performance has improved.
+
+Benchmarking EC Jac Point double
+Benchmarking EC Jac Point double: Warming up for 3.0000 s
+Benchmarking EC Jac Point double: Collecting 10 samples in estimated 5.0002 s (958k iterations)
+Benchmarking EC Jac Point double: Analyzing
+EC Jac Point double     time:   [5.1920 us 5.2053 us 5.2327 us]
+                        change: [-49.740% -49.308% -48.858%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 2 outliers among 10 measurements (20.00%)
+  2 (20.00%) high mild
+
+Benchmarking EC Jac Point mul
+Benchmarking EC Jac Point mul: Warming up for 3.0000 s
+Benchmarking EC Jac Point mul: Collecting 10 samples in estimated 5.0197 s (2200 iterations)
+Benchmarking EC Jac Point mul: Analyzing
+EC Jac Point mul        time:   [2.3045 ms 2.4074 ms 2.4743 ms]
+                        change: [-56.846% -55.536% -54.070%] (p = 0.00 < 0.05)
+                        Performance has improved.
+
+Benchmarking EC Jac P mul wnaf/2
+Benchmarking EC Jac P mul wnaf/2: Warming up for 3.0000 s
+Benchmarking EC Jac P mul wnaf/2: Collecting 10 samples in estimated 5.0670 s (2640 iterations)
+Benchmarking EC Jac P mul wnaf/2: Analyzing
+EC Jac P mul wnaf/2     time:   [1.8894 ms 1.8958 ms 1.9033 ms]
+                        change: [-57.503% -57.144% -56.804%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Benchmarking EC Jac P mul wnaf/3
+Benchmarking EC Jac P mul wnaf/3: Warming up for 3.0000 s
+Benchmarking EC Jac P mul wnaf/3: Collecting 10 samples in estimated 5.0104 s (2860 iterations)
+Benchmarking EC Jac P mul wnaf/3: Analyzing
+EC Jac P mul wnaf/3     time:   [1.7437 ms 1.7512 ms 1.7570 ms]
+                        change: [-55.819% -55.560% -55.311%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Benchmarking EC Jac P mul wnaf/4
+Benchmarking EC Jac P mul wnaf/4: Warming up for 3.0000 s
+Benchmarking EC Jac P mul wnaf/4: Collecting 10 samples in estimated 5.0906 s (3080 iterations)
+Benchmarking EC Jac P mul wnaf/4: Analyzing
+EC Jac P mul wnaf/4     time:   [1.6455 ms 1.6554 ms 1.6629 ms]
+                        change: [-55.724% -55.244% -54.764%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 1 outliers among 10 measurements (10.00%)
+  1 (10.00%) high mild
+Benchmarking EC Jac P mul wnaf/5
+Benchmarking EC Jac P mul wnaf/5: Warming up for 3.0000 s
+Benchmarking EC Jac P mul wnaf/5: Collecting 10 samples in estimated 5.0092 s (3080 iterations)
+Benchmarking EC Jac P mul wnaf/5: Analyzing
+EC Jac P mul wnaf/5     time:   [1.6209 ms 1.6351 ms 1.6493 ms]
+                        change: [-55.065% -54.731% -54.426%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Benchmarking EC Jac P mul wnaf/6
+Benchmarking EC Jac P mul wnaf/6: Warming up for 3.0000 s
+Benchmarking EC Jac P mul wnaf/6: Collecting 10 samples in estimated 5.0195 s (3025 iterations)
+Benchmarking EC Jac P mul wnaf/6: Analyzing
+EC Jac P mul wnaf/6     time:   [1.6341 ms 1.6398 ms 1.6457 ms]
+                        change: [-55.434% -55.153% -54.897%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Benchmarking EC Jac P mul wnaf/7
+Benchmarking EC Jac P mul wnaf/7: Warming up for 3.0000 s
+Benchmarking EC Jac P mul wnaf/7: Collecting 10 samples in estimated 5.0003 s (2860 iterations)
+Benchmarking EC Jac P mul wnaf/7: Analyzing
+EC Jac P mul wnaf/7     time:   [1.7386 ms 1.7498 ms 1.7611 ms]
+                        change: [-55.405% -55.185% -54.946%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 2 outliers among 10 measurements (20.00%)
+  2 (20.00%) high mild
+
+Benchmarking G JPoint mul
+Benchmarking G JPoint mul: Warming up for 3.0000 s
+Benchmarking G JPoint mul: Collecting 10 samples in estimated 5.0056 s (24k iterations)
+Benchmarking G JPoint mul: Analyzing
+G JPoint mul            time:   [202.75 us 204.18 us 205.19 us]
+                        change: [-56.694% -56.383% -56.093%] (p = 0.00 < 0.05)
+                        Performance has improved.
+
+Benchmarking EC JPoint kP+lQ
+Benchmarking EC JPoint kP+lQ: Warming up for 3.0000 s
+Benchmarking EC JPoint kP+lQ: Collecting 10 samples in estimated 5.1861 s (1155 iterations)
+Benchmarking EC JPoint kP+lQ: Analyzing
+EC JPoint kP+lQ         time:   [4.4620 ms 4.4857 ms 4.5040 ms]
+                        change: [-57.824% -57.465% -57.123%] (p = 0.00 < 0.05)
+                        Performance has improved.
+
+Benchmarking EC JPoint kP+lQ shamir
+Benchmarking EC JPoint kP+lQ shamir: Warming up for 3.0000 s
+Benchmarking EC JPoint kP+lQ shamir: Collecting 10 samples in estimated 5.1608 s (1760 iterations)
+Benchmarking EC JPoint kP+lQ shamir: Analyzing
+EC JPoint kP+lQ shamir  time:   [2.8295 ms 2.8442 ms 2.8671 ms]
+                        change: [-57.348% -56.919% -56.373%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 1 outliers among 10 measurements (10.00%)
+  1 (10.00%) high severe
+
+Benchmarking Schnorr verify
+Benchmarking Schnorr verify: Warming up for 3.0000 s
+Benchmarking Schnorr verify: Collecting 10 samples in estimated 5.1002 s (2530 iterations)
+Benchmarking Schnorr verify: Analyzing
+Schnorr verify          time:   [1.8837 ms 1.9047 ms 1.9405 ms]
+                        change: [+1.9410% +3.5619% +5.3663%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+
+Benchmarking Schnorr Batch Ver/10
+Benchmarking Schnorr Batch Ver/10: Warming up for 3.0000 s
+Benchmarking Schnorr Batch Ver/10: Collecting 10 samples in estimated 5.2406 s (495 iterations)
+Benchmarking Schnorr Batch Ver/10: Analyzing
+Schnorr Batch Ver/10    time:   [10.531 ms 10.586 ms 10.663 ms]
+                        thrpt:  [937.84  elem/s 944.67  elem/s 949.54  elem/s]
+                        change: [-1.7346% -0.9435% -0.1356%] (p = 0.04 < 0.05)
+                        Change within noise threshold.
+Benchmarking Schnorr Batch Ver/20
+Benchmarking Schnorr Batch Ver/20: Warming up for 3.0000 s
+Benchmarking Schnorr Batch Ver/20: Collecting 10 samples in estimated 5.8691 s (330 iterations)
+Benchmarking Schnorr Batch Ver/20: Analyzing
+Schnorr Batch Ver/20    time:   [17.483 ms 17.600 ms 17.697 ms]
+                        thrpt:  [1.1301 Kelem/s 1.1363 Kelem/s 1.1439 Kelem/s]
+                        change: [-3.8647% -2.5675% -1.2104%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Benchmarking Schnorr Batch Ver/40
+Benchmarking Schnorr Batch Ver/40: Warming up for 3.0000 s
+Benchmarking Schnorr Batch Ver/40: Collecting 10 samples in estimated 6.6203 s (220 iterations)
+Benchmarking Schnorr Batch Ver/40: Analyzing
+Schnorr Batch Ver/40    time:   [30.159 ms 30.789 ms 31.759 ms]
+                        thrpt:  [1.2595 Kelem/s 1.2992 Kelem/s 1.3263 Kelem/s]
+                        change: [-0.6426% +1.3906% +3.9403%] (p = 0.28 > 0.05)
+                        No change in performance detected.
+Found 2 outliers among 10 measurements (20.00%)
+  2 (20.00%) high mild
+Benchmarking Schnorr Batch Ver/80
+Benchmarking Schnorr Batch Ver/80: Warming up for 3.0000 s
+Benchmarking Schnorr Batch Ver/80: Collecting 10 samples in estimated 5.9754 s (110 iterations)
+Benchmarking Schnorr Batch Ver/80: Analyzing
+Schnorr Batch Ver/80    time:   [53.091 ms 53.360 ms 53.867 ms]
+                        thrpt:  [1.4851 Kelem/s 1.4993 Kelem/s 1.5069 Kelem/s]
+                        change: [-1.3246% +1.0869% +3.9640%] (p = 0.52 > 0.05)
+                        No change in performance detected.
+Found 2 outliers among 10 measurements (20.00%)
+  1 (10.00%) low mild
+  1 (10.00%) high severe
+Benchmarking Schnorr Batch Ver/160
+Benchmarking Schnorr Batch Ver/160: Warming up for 3.0000 s
+Benchmarking Schnorr Batch Ver/160: Collecting 10 samples in estimated 5.3023 s (55 iterations)
+Benchmarking Schnorr Batch Ver/160: Analyzing
+Schnorr Batch Ver/160   time:   [95.290 ms 95.853 ms 96.675 ms]
+                        thrpt:  [1.6550 Kelem/s 1.6692 Kelem/s 1.6791 Kelem/s]
+                        change: [+1.3157% +3.0356% +5.2637%] (p = 0.01 < 0.05)
+                        Performance has regressed.
+Found 2 outliers among 10 measurements (20.00%)
+  1 (10.00%) high mild
+  1 (10.00%) high severe
+Benchmarking Schnorr Batch Ver/320
+Benchmarking Schnorr Batch Ver/320: Warming up for 3.0000 s
+Benchmarking Schnorr Batch Ver/320: Collecting 10 samples in estimated 9.4263 s (55 iterations)
+Benchmarking Schnorr Batch Ver/320: Analyzing
+Schnorr Batch Ver/320   time:   [172.03 ms 173.75 ms 174.89 ms]
+                        thrpt:  [1.8297 Kelem/s 1.8417 Kelem/s 1.8602 Kelem/s]
+                        change: [-1.2950% +0.5281% +2.4408%] (p = 0.60 > 0.05)
+                        No change in performance detected.
+Found 1 outliers among 10 measurements (10.00%)
+  1 (10.00%) high mild
+Benchmarking Schnorr Batch Ver/640
+Benchmarking Schnorr Batch Ver/640: Warming up for 3.0000 s
+Benchmarking Schnorr Batch Ver/640: Collecting 10 samples in estimated 17.367 s (55 iterations)
+Benchmarking Schnorr Batch Ver/640: Analyzing
+Schnorr Batch Ver/640   time:   [318.60 ms 320.39 ms 321.98 ms]
+                        thrpt:  [1.9877 Kelem/s 1.9976 Kelem/s 2.0088 Kelem/s]
+                        change: [+1.7845% +3.2134% +4.9673%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 1 outliers among 10 measurements (10.00%)
+  1 (10.00%) high severe
+
+Benchmarking Schnorr sign
+Benchmarking Schnorr sign: Warming up for 3.0000 s
+Benchmarking Schnorr sign: Collecting 10 samples in estimated 5.0067 s (10k iterations)
+Benchmarking Schnorr sign: Analyzing
+Schnorr sign            time:   [490.20 us 492.31 us 495.14 us]
+                        change: [-0.9715% +0.1417% +1.2325%] (p = 0.81 > 0.05)
+                        No change in performance detected.
+
+Benchmarking Schnorr libsecp sign
+Benchmarking Schnorr libsecp sign: Warming up for 3.0000 s
+Benchmarking Schnorr libsecp sign: Collecting 10 samples in estimated 5.0023 s (49k iterations)
+Benchmarking Schnorr libsecp sign: Analyzing
+Schnorr libsecp sign    time:   [100.25 us 102.83 us 106.27 us]
+                        change: [+0.0486% +1.2903% +3.2738%] (p = 0.15 > 0.05)
+                        No change in performance detected.
+Found 1 outliers among 10 measurements (10.00%)
+  1 (10.00%) high severe
+
+Benchmarking 256 bit mul/Apints
+Benchmarking 256 bit mul/Apints: Warming up for 3.0000 s
+Benchmarking 256 bit mul/Apints: Collecting 10 samples in estimated 5.0000 s (84M iterations)
+Benchmarking 256 bit mul/Apints: Analyzing
+256 bit mul/Apints      time:   [58.337 ns 58.893 ns 59.441 ns]
+                        change: [-1.8798% -0.2159% +1.1477%] (p = 0.81 > 0.05)
+                        No change in performance detected.
+Found 2 outliers among 10 measurements (20.00%)
+  1 (10.00%) low mild
+  1 (10.00%) high mild
+Benchmarking 256 bit mul/BigUint
+Benchmarking 256 bit mul/BigUint: Warming up for 3.0000 s
+Benchmarking 256 bit mul/BigUint: Collecting 10 samples in estimated 5.0000 s (35M iterations)
+Benchmarking 256 bit mul/BigUint: Analyzing
+256 bit mul/BigUint     time:   [139.07 ns 139.77 ns 140.63 ns]
+                        change: [-0.6497% +0.2444% +1.2721%] (p = 0.65 > 0.05)
+                        No change in performance detected.
+Benchmarking 256 bit mul/Rugs
+Benchmarking 256 bit mul/Rugs: Warming up for 3.0000 s
+Benchmarking 256 bit mul/Rugs: Collecting 10 samples in estimated 5.0000 s (126M iterations)
+Benchmarking 256 bit mul/Rugs: Analyzing
+256 bit mul/Rugs        time:   [39.138 ns 39.259 ns 39.397 ns]
+                        change: [-8.7706% -7.2946% -6.0368%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 1 outliers among 10 measurements (10.00%)
+  1 (10.00%) high mild
+

@@ -82,7 +82,7 @@ fn benchmark_int_libraries(c: &mut Criterion) {
     let fun_rugs = Fun::new("Rugs",  |b : &mut Bencher, inputs : &Inputs| b.iter(|| {
         let a =   thread_rng().choose(&inputs.rugs).unwrap();
         let b =   thread_rng().choose(&inputs.rugs).unwrap();
-        let result = a.mul(b);
+        let result:Integer = a.mul(b);
         criterion::black_box(result);
     }));
 
@@ -151,7 +151,7 @@ fn benchmark_biguint(c: &mut Criterion) {
 
     let numbers = numbers_orig.clone();
     c.bench_function("BigUint mul",move |b| b.iter(|| {
-        let a = rand::thread_rng().choose(&numbers).unwrap().to_owned();
+        let a = rand::thread_rng().choose(&numbers).unwrap();
         let b = rand::thread_rng().choose(&numbers).unwrap();
         let result = a.mul(b);
         criterion::black_box(result);

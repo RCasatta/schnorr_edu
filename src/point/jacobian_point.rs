@@ -7,6 +7,8 @@ use std::ops::{Mul,Sub,Add};
 use std::fmt;
 use std::borrow::Borrow;
 use rug::Integer;
+use num_bigint::BigUint;
+use num_traits::Num;
 
 // Very bad defining Eq like this since two equal Jacobian Point could have different coordinates
 // however it's useful for now and used only in the HashMap where values are normalized
@@ -207,14 +209,12 @@ pub fn jacobian_point_add(p1 : Option<&JacobianPoint>, p2 : Option<&JacobianPoin
 pub fn generator_mul(n : &ScalarN) -> Option<JacobianPoint> {
     let mut acc : Option<JacobianPoint> = None;
     let mut _junk : Option<JacobianPoint> = None;
-    let mut current = n.0.to_owned();
-    let rem_value = Integer::from(256);
-
-    for i in 0..256 {
-        let (quotient, remainder) = current.div_rem(rem_value.clone());
-        let index = i * 256usize  + remainder.to_usize().unwrap();
+    let string_radix = n.0.to_string_radix(16);
+    let bi = BigUint::from_str_radix(&string_radix, 16).unwrap();
+    for (i,byte) in bi.to_bytes_le().iter().enumerate() {
+        let index = i * 256usize  + usize::from(*byte);
         let point = G_MUL_CACHE.get(index);
-        if remainder != 0 {
+        if *byte != 0u8 {
             acc  = mixed_point_add(acc.as_ref(), point);
         }  else {
             // the purpose of this arm is to try to achieve constant time
@@ -222,7 +222,6 @@ pub fn generator_mul(n : &ScalarN) -> Option<JacobianPoint> {
             // this lib is totally unsecure
             _junk = mixed_point_add(acc.as_ref(), Some(&CONTEXT.G));
         }
-        current = quotient;
     }
     acc
 }
