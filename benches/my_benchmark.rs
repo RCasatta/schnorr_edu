@@ -5,6 +5,9 @@ extern crate num_bigint;
 extern crate num_traits;
 extern crate schnorr_edu;
 extern crate secp256k1;
+extern crate apint;
+extern crate rug;
+
 
 use rand::Rng;
 use rand::thread_rng;
@@ -27,6 +30,68 @@ use criterion::ParameterizedBenchmark;
 use criterion::Throughput;
 use criterion::PlotConfiguration;
 use criterion::AxisScale;
+use apint::UInt;
+use criterion::Fun;
+use criterion::Bencher;
+use rug::Integer;
+
+#[derive(Debug)]
+struct Inputs {
+    biguints : Vec<BigUint>,
+    apints: Vec<UInt>,
+    rugs: Vec<Integer>,
+}
+
+fn benchmark_int_libraries(c: &mut Criterion) {
+    let mut rng = thread_rng();
+    let total = 1000usize;
+    let mut apints = Vec::new();
+    for _ in 0..total {
+        apints.push( UInt::from_u64(rng.gen()) * &UInt::from_u64(rng.gen()) * &UInt::from_u64(rng.gen()) * &UInt::from_u64(rng.gen()) );
+    }
+
+    let mut a = [0u8;32];
+    let mut biguints = Vec::new();
+    for _ in 0..total {
+        rng.fill_bytes(&mut a);
+        biguints.push( BigUint::from_bytes_be(&a) );
+    }
+
+    let mut rugs = Vec::new();
+    for _ in 0..total {
+        rugs.push( Integer::from(rng.gen::<u64>()) * &Integer::from(rng.gen::<u64>())
+            * &Integer::from(rng.gen::<u64>()) * &Integer::from(rng.gen::<u64>()) );
+    }
+
+    let inputs = Inputs {
+        biguints, apints, rugs,
+    };
+
+    let fun_apints = Fun::new("Apints",  |b : &mut Bencher, inputs : &Inputs| b.iter(|| {
+        let a =   thread_rng().choose(&inputs.apints).unwrap();
+        let b =   thread_rng().choose(&inputs.apints).unwrap();
+        let result = a.mul(b);
+        criterion::black_box(result);
+    }));
+
+    let fun_biguints = Fun::new("BigUint",  |b : &mut Bencher , inputs: &Inputs| b.iter(|| {
+        let a =   thread_rng().choose(&inputs.biguints).unwrap();
+        let b =   thread_rng().choose(&inputs.biguints).unwrap();
+        let result = a.mul(b);
+        criterion::black_box(result);
+    }));
+
+    let fun_rugs = Fun::new("Rugs",  |b : &mut Bencher, inputs : &Inputs| b.iter(|| {
+        let a =   thread_rng().choose(&inputs.rugs).unwrap();
+        let b =   thread_rng().choose(&inputs.rugs).unwrap();
+        let result = a.mul(b);
+        criterion::black_box(result);
+    }));
+
+    let functions = vec!(fun_apints, fun_biguints, fun_rugs);
+
+    c.bench_functions("256 bit mul", functions, inputs);
+}
 
 
 fn benchmark_biguint(c: &mut Criterion) {
@@ -403,7 +468,7 @@ criterion_group!{
     name = benches;
     config = Criterion::default().sample_size(10);
     //config = Criterion::default().sample_size(2).without_plots();
-    targets = benchmark_biguint, benchmark_point, benchmark_verify, benchmark_batch_verify, benchmark_sign
+    targets = benchmark_biguint, benchmark_point, benchmark_verify, benchmark_batch_verify, benchmark_sign, benchmark_int_libraries
 }
 
 criterion_main!(benches);

@@ -19,7 +19,7 @@ pub fn musig(msg : &Msg, sec_keys:  &Vec<ScalarN>, is_new: bool) -> (Point, Sign
     assert!(total_signers >1);
 
     let pub_keys : Vec<Point> = sec_keys.iter()
-        .map(|sec_key| CONTEXT.G.clone().mul(sec_key) )
+        .map(|sec_key| CONTEXT.G.borrow().mul(sec_key) )
         .collect();
 
     let pub_keys_bytes : Vec<[u8;33]> = pub_keys.iter()

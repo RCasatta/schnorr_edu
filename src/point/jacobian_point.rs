@@ -123,7 +123,7 @@ pub fn jacobian_point_double(p : &JacobianPoint) -> Option<JacobianPoint> {
     let m = CONTEXT.three.borrow().mul( &p_x_pow2);
     let x = m.borrow().mul(&m).sub( &s.clone()
         .mul(&CONTEXT.two));
-    let y = m.borrow().mul( &s.sub(&x) ).sub( &CONTEXT.eight.clone()
+    let y = m.borrow().mul( &s.sub(&x) ).sub( &CONTEXT.eight.borrow()
         .mul(&p_y_pow4));
     let z = CONTEXT.two.borrow().mul(&p.y).mul(&p.z);
     Some(JacobianPoint{x,y,z})

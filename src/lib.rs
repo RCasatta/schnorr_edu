@@ -7,6 +7,8 @@ extern crate num_integer;
 extern crate data_encoding;
 extern crate rand;
 extern crate crypto;
+extern crate apint;
+extern crate rug;
 
 pub mod context;
 pub mod point;
@@ -42,7 +44,7 @@ pub fn schnorr_sign(msg : &Msg, sec_key: &ScalarN) -> Signature {
     let R_jacobian = generator_mul(&k).unwrap();
     let R = Point::from(R_jacobian);
     if !R.y.jacobi() {
-        k = CONTEXT.n.clone().sub(k);
+        k = CONTEXT.n.borrow().sub(k);
     }
     let Rx = R.x.to_32_bytes();
     let dG_jacobian = generator_mul(&sec_key).unwrap();
@@ -67,7 +69,7 @@ pub fn schnorr_verify(msg : &Msg, pub_key: &Point, signature: &Signature) -> boo
     }
     let e = concat_and_hash(&signature_bytes[..32], &pub_key.as_bytes()[..], msg);
     let a = generator_mul(&signature.s).unwrap();
-    let b = JacobianPoint::from(pub_key.to_owned()).mul(&CONTEXT.n.clone().sub(e));
+    let b = JacobianPoint::from(pub_key.to_owned()).mul(&CONTEXT.n.borrow().sub(e));
     let R = jacobian_point_add(Some(&a), Some(&b));
     if R.is_none() {
         return false;
@@ -108,9 +110,10 @@ pub fn schnorr_batch_verify(messages : &Vec<Msg>, pub_keys:  &Vec<Point>, signat
         }
         let e = concat_and_hash(&signature.Rx.to_32_bytes(), &P.as_bytes(), &msg[..]);
         e_vec.push(e);
-        let c = signature.Rx.clone().pow(&CONTEXT.three).add(&CONTEXT.seven);
+        let c = signature.Rx.borrow().pow(&CONTEXT.three).add(&CONTEXT.seven);
         let y = c.pow(&CONTEXT.p_add1_div4);
-        if y.pow(&CONTEXT.two) != c {
+        let y_pow2 = y.borrow().mul(&y);
+        if y_pow2 != c {
             return false;
         }
         R_vec.push(  JacobianPoint::from(Point{x: signature.Rx.clone(), y} ));
@@ -132,7 +135,7 @@ pub fn schnorr_batch_verify(messages : &Vec<Msg>, pub_keys:  &Vec<Point>, signat
         inner_product.push(Term {coeff: a.to_owned(), point: R.to_owned() });
         inner_product.push(Term {coeff: a.to_owned().mul(e), point: JacobianPoint::from( P.to_owned())  });
     }
-    inner_product.push(Term{coeff: CONTEXT.n.clone().sub( coeff), point: CONTEXT.G_jacobian.clone() });  // -sG
+    inner_product.push(Term{coeff: CONTEXT.n.borrow().sub( coeff), point: CONTEXT.G_jacobian.clone() });  // -sG
 
     let mut inner_product : BinaryHeap<Term> = BinaryHeap::from(inner_product);
 

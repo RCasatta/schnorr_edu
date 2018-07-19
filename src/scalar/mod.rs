@@ -2,6 +2,7 @@ use crypto::sha2::Sha256;
 use num_bigint::BigUint;
 use crypto::digest::Digest;
 use std::ops::{Sub,Add};
+use num_traits::Num;
 pub use self::scalar_n::ScalarN;
 pub use self::scalar_p::ScalarP;
 
@@ -49,4 +50,45 @@ pub fn vec_to_32_bytes(val : &Vec<u8>) -> [u8;32] {
     let mut result = [0u8;32];
     result.copy_from_slice(val);
     result
+}
+
+
+
+
+#[cfg(test)]
+mod tests {
+    use apint::ApInt;
+    use rand::thread_rng;
+    use rand::Rng;
+    use num_bigint::BigUint;
+    use apint::Radix;
+    use rug::Integer;
+    use num_traits::Num;
+
+    #[test]
+    fn test_apint() {
+        let mut rng = thread_rng();
+        let val : u64 = rng.gen();
+        let apint = ApInt::from_u64(val);
+        //println!("{}",apint.as_string_with_radix(Radix::new(10).unwrap()));
+        //let biguint = BigUint::from(val);
+        //println!("{:?}",biguint);
+
+    }
+
+    #[test]
+    fn test_rug() {
+        let mut rng = thread_rng();
+        let val : u64 = rng.gen();
+        let integer = Integer::from(val);
+
+        assert_eq!(val, integer.to_u64().unwrap());
+
+        let string = integer.to_string_radix(10);
+        assert_eq!(format!("{}", val), string);
+
+        let result = BigUint::from_str_radix(&string, 10).unwrap();
+        assert_eq!(format!("{}", result), string);
+
+    }
 }

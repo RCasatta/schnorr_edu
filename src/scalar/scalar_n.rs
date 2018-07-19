@@ -13,6 +13,7 @@ use num_traits::ToPrimitive;
 use std::ops::SubAssign;
 use std::ops::DivAssign;
 use num_traits::Zero;
+use std::borrow::Borrow;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct ScalarN(pub BigUint);
@@ -28,7 +29,7 @@ impl ScalarN {
     pub fn new(val: BigUint) -> Self {
         match val < CONTEXT.n.0 {
             true  => ScalarN(val),
-            false => ScalarN(val.rem(CONTEXT.n.0.clone())),
+            false => ScalarN(val.rem(&CONTEXT.n.0)),  // TODO not sure if panic here
         }
     }
     pub fn from_bytes(bytes: &[u8]) -> Self {
@@ -45,6 +46,24 @@ impl Sub for ScalarN {
         ScalarN::new(finite_sub(&self.0, &other.0, &CONTEXT.n.0))
     }
 }
+
+impl<'a, 'b> Sub<&'b ScalarN> for &'a ScalarN {
+    type Output = ScalarN;
+
+    fn sub(self, other: &'b ScalarN) -> ScalarN {
+        ScalarN::new(finite_sub(&self.0, &other.0, &CONTEXT.n.0))
+    }
+}
+
+impl<'a> Sub<ScalarN> for &'a ScalarN {
+    type Output = ScalarN;
+
+    fn sub(self, other: ScalarN) -> ScalarN {
+        ScalarN::new(finite_sub(&self.0, &other.0, &CONTEXT.n.0))
+    }
+}
+
+
 impl Add for ScalarN {
     type Output = ScalarN;
 
@@ -57,9 +76,10 @@ impl<'a> Mul<&'a ScalarN> for ScalarN {
     type Output = ScalarN;
 
     fn mul(self, other: &ScalarN) -> ScalarN {
-        ScalarN::new(self.0.mul(&other.0) )
+        ScalarN::new(self.0.borrow().mul(&other.0) )
     }
 }
+
 
 impl Distribution<ScalarN> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> ScalarN {
@@ -155,12 +175,12 @@ mod tests {
         for i in 1..100u32 {
             let n = ScalarN(BigUint::from(i));
 
-            assert_eq!(n.clone() , ScalarN::from_naf(n.clone().to_wnaf(7)));
-            assert_eq!(n.clone() , ScalarN::from_naf(n.clone().to_wnaf(6)));
-            assert_eq!(n.clone() , ScalarN::from_naf(n.clone().to_wnaf(5)));
-            assert_eq!(n.clone() , ScalarN::from_naf(n.clone().to_wnaf(4)));
-            assert_eq!(n.clone() , ScalarN::from_naf(n.clone().to_wnaf(3)));
-            assert_eq!(n.clone() , ScalarN::from_naf(n.clone().to_wnaf(2)));
+            assert_eq!(&n , &ScalarN::from_naf(n.clone().to_wnaf(7)));
+            assert_eq!(&n , &ScalarN::from_naf(n.clone().to_wnaf(6)));
+            assert_eq!(&n , &ScalarN::from_naf(n.clone().to_wnaf(5)));
+            assert_eq!(&n , &ScalarN::from_naf(n.clone().to_wnaf(4)));
+            assert_eq!(&n , &ScalarN::from_naf(n.clone().to_wnaf(3)));
+            assert_eq!(&n , &ScalarN::from_naf(n.clone().to_wnaf(2)));
         }
 
     }
