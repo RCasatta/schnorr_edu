@@ -8,7 +8,7 @@ extern crate secp256k1;
 extern crate apint;
 extern crate rug;
 
-
+use std::ops::Sub;
 use rand::Rng;
 use rand::thread_rng;
 use rand::RngCore;
@@ -16,7 +16,6 @@ use criterion::Criterion;
 use num_bigint::BigUint;
 use std::ops::{Mul, MulAssign, Rem, Div};
 use num_traits::ops::checked::CheckedSub;
-use std::str::FromStr;
 use schnorr_edu::*;
 use schnorr_edu::point::*;
 use schnorr_edu::context::*;
@@ -25,7 +24,6 @@ use secp256k1::Secp256k1;
 use secp256k1::Message;
 use secp256k1::key::SecretKey;
 use schnorr_edu::util::shamir::shamirs_trick;
-use num_traits::One;
 use criterion::ParameterizedBenchmark;
 use criterion::Throughput;
 use criterion::PlotConfiguration;
@@ -101,7 +99,7 @@ fn benchmark_biguint(c: &mut Criterion) {
     let mut numbers_orig = Vec::new();
     for _ in 0..total {
         rng.fill_bytes(&mut a);
-        numbers_orig.push( BigUint::from_bytes_be(&a) );
+        numbers_orig.push( integer_from_bytes(&a) );
     }
 
     let numbers = numbers_orig.clone();
@@ -109,13 +107,13 @@ fn benchmark_biguint(c: &mut Criterion) {
         let a =  rand::thread_rng().choose(&numbers).unwrap();
         let b =  rand::thread_rng().choose(&numbers).unwrap();
         let c =  rand::thread_rng().choose(&numbers).unwrap();
-        let result = a.modpow(b, c);
+        let result = a.to_owned().pow_mod(b, c).unwrap();
         criterion::black_box(result);
     } ));
 
     let numbers = numbers_orig.clone();
     c.bench_function("ScalarP modpow one", move|b| b.iter(|| {
-        let a =  ScalarP(BigUint::one());
+        let a =  ScalarP(Integer::from(1));
         let b =  rand::thread_rng().choose(&numbers).unwrap();
         let result = a.pow(&ScalarP(b.to_owned()));
         criterion::black_box(result);
@@ -123,7 +121,7 @@ fn benchmark_biguint(c: &mut Criterion) {
 
     let numbers = numbers_orig.clone();
     c.bench_function("ScalarP mul one", move|b| b.iter(|| {
-        let a =  ScalarP(BigUint::one());
+        let a =  ScalarP(Integer::from(1));
         let b =  rand::thread_rng().choose(&numbers).unwrap();
         let result = a.mul(&ScalarP(b.to_owned()));
         criterion::black_box(result);
@@ -135,19 +133,19 @@ fn benchmark_biguint(c: &mut Criterion) {
     } ));
 
     let numbers = numbers_orig.clone();
-    let two = BigUint::from_str("2").unwrap();
+    let two = Integer::from(2);
     c.bench_function("BigUint modpow 2", move|b| b.iter(|| {
         let a =  rand::thread_rng().choose(&numbers).unwrap();
         let c =  rand::thread_rng().choose(&numbers).unwrap();
-        let result = a.modpow(&two, c);
+        let result = a.to_owned().pow_mod(&two, c);
         criterion::black_box(result);
     } ));
 
     let numbers = numbers_orig.clone();
-    c.bench_function("BigUint checked_sub",move |b| b.iter(|| {
+    c.bench_function("BigUint sub",move |b| b.iter(|| {
         let a = rand::thread_rng().choose(&numbers).unwrap();
         let b = rand::thread_rng().choose(&numbers).unwrap();
-        let result = a.checked_sub(b);
+        let result = a.to_owned().sub(b);
         criterion::black_box(result);
     } ));
 

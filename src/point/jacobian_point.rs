@@ -208,12 +208,13 @@ pub fn generator_mul(n : &ScalarN) -> Option<JacobianPoint> {
     let mut acc : Option<JacobianPoint> = None;
     let mut _junk : Option<JacobianPoint> = None;
     let mut current = n.0.to_owned();
+    let rem_value = Integer::from(256);
 
     for i in 0..256 {
-        let byte = current.to_u8().unwrap();
-        let index = i * 256usize  + usize::from(byte);
+        let (quotient, remainder) = current.div_rem(rem_value.clone());
+        let index = i * 256usize  + remainder.to_usize().unwrap();
         let point = G_MUL_CACHE.get(index);
-        if byte != 0u8 {
+        if remainder != 0 {
             acc  = mixed_point_add(acc.as_ref(), point);
         }  else {
             // the purpose of this arm is to try to achieve constant time
@@ -221,7 +222,7 @@ pub fn generator_mul(n : &ScalarN) -> Option<JacobianPoint> {
             // this lib is totally unsecure
             _junk = mixed_point_add(acc.as_ref(), Some(&CONTEXT.G));
         }
-        current = current << 8;
+        current = quotient;
     }
     acc
 }

@@ -36,8 +36,11 @@ pub fn concat_and_hash(a : &[u8], b : &[u8], c : &[u8]) -> ScalarN {
 }
 
 fn to_32_bytes(val : &Integer) -> [u8;32] {
-
-    let bytes = HEXLOWER.decode( val.to_string_radix(16).as_bytes() ).unwrap();
+    let mut string = val.to_string_radix(16);
+    if string.len() % 2 == 1 {
+        string = format!("0{}", string);
+    }
+    let bytes = HEXLOWER.decode( string.as_bytes() ).unwrap();
     let mut result = [0u8;32];
     let start = 32-bytes.len();
     assert!(start<=32);

@@ -128,10 +128,10 @@ impl ScalarN {
     pub fn from_naf(v : Vec<i8>) -> Self{
         let mut acc = Integer::new();
         for (i,el) in v.iter().enumerate() {
-            if i>0 {
-                acc*=2;
+            if i > 0  {
+                acc = acc * 2;
             }
-            acc = acc + (*el as u32);
+            acc = acc + (*el as i32);
         }
         ScalarN( acc )
     }
@@ -166,7 +166,9 @@ mod tests {
         //println!("{:?}", );
         let expected = [1i8,0,0,-1];
         let naf = n.clone().to_wnaf(2);
+        println!("{:?}", naf);
         assert_eq!(expected.to_vec(), naf);
+
         assert_eq!(n , ScalarN::from_naf(naf));
 
         for i in 1..100u32 {
