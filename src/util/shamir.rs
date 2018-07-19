@@ -1,10 +1,8 @@
 use scalar::ScalarN;
 use point::JacobianPoint;
 use point::jacobian_point_add;
-use num_bigint::BigUint;
-use num_traits::One;
-use num_traits::Zero;
 use point::jacobian_point::jacobian_point_double;
+use rug::Integer;
 
 #[allow(non_snake_case)]
 pub fn shamirs_trick(k : ScalarN, P: JacobianPoint, l: ScalarN, Q : JacobianPoint) -> JacobianPoint {
@@ -16,11 +14,13 @@ pub fn shamirs_trick(k : ScalarN, P: JacobianPoint, l: ScalarN, Q : JacobianPoin
     precomputed.push(jacobian_point_add( Some(&Q), Some(&P)));
 
     let mut acc : Option<JacobianPoint> = None;
-    let mut exponent = BigUint::one()<<255;
+    let mut exponent : Integer = Integer::from(1) << 255;
 
     loop {
-        let a = !(&k.0 & &exponent).is_zero() as usize;
-        let b = !(&l.0 & &exponent).is_zero() as usize;
+        let a1 : Integer = (&k.0 & &exponent).into();
+        let a = (a1 != 0) as usize;
+        let b1 : Integer = (&l.0 & &exponent).into();
+        let b = (b1 != 0) as usize;
         let index = a * 2 + b;
         let current = precomputed[index].to_owned();
 
@@ -30,8 +30,8 @@ pub fn shamirs_trick(k : ScalarN, P: JacobianPoint, l: ScalarN, Q : JacobianPoin
         if current.is_some() {
             acc = jacobian_point_add(acc.as_ref(), current.as_ref());
         }
-        exponent >>= 1usize;
-        if exponent.is_zero() {
+        exponent = exponent >> 1;
+        if exponent == 0 {
             break;
         }
     }
@@ -51,11 +51,9 @@ mod tests {
     use rand::Rng;
     use super::shamirs_trick;
     use point::point_add;
-    use num_bigint::BigUint;
-    use num_traits::One;
-    use num_traits::Zero;
     use point::jacobian_point_add;
     use point::generator_mul;
+    use rug::Integer;
 
     #[test]
     #[allow(non_snake_case)]
@@ -79,21 +77,22 @@ mod tests {
         let mut rng = thread_rng();
         let P = CONTEXT.G.clone();
         let k = rng.gen::<ScalarN>();
-        let two_scalar_n = ScalarN(BigUint::one() + BigUint::one());
+        let two_scalar_n = ScalarN(Integer::from(2));
 
-        let mut exponent = BigUint::one()<<255;
+        let mut exponent : Integer = Integer::from(1)<<255;
         let mut acc : Option<Point> = None;
 
         loop {
-            let a : bool = !(&k.0 & &exponent).is_zero();
+            let val : Integer = (&k.0 & &exponent).into();
+            let a : bool = val != 0;
             if acc.is_some() {
                 acc = point_mul(acc.unwrap(),two_scalar_n.clone());
             }
             if a {
                 acc = point_add(acc, Some(P.clone()));
             }
-            exponent >>= 1usize;
-            if exponent.is_zero() {
+            exponent = exponent >> 1;
+            if exponent == 0 {
                 break;
             }
         }

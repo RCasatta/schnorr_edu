@@ -1,8 +1,8 @@
 use context::CONTEXT;
-use num_bigint::BigUint;
 use std::fmt;
 use scalar::ScalarN;
 use scalar::ScalarP;
+use scalar::integer_from_bytes;
 
 #[allow(non_snake_case)]
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -24,10 +24,10 @@ impl Signature {
     }
     pub fn from_bytes(bytes : &[u8]) -> Self {
         assert_eq!(bytes.len(),64);
-        let Rx = BigUint::from_bytes_be(&bytes[..32]);
+        let Rx = integer_from_bytes(&bytes[..32]);
         assert!( Rx < CONTEXT.p.0);
         let Rx = ScalarP(Rx);
-        let s = BigUint::from_bytes_be(&bytes[32..]) ;
+        let s = integer_from_bytes(&bytes[32..]) ;
         assert!( s < CONTEXT.n.0);
         let s = ScalarN(s);
         Signature {Rx,s}

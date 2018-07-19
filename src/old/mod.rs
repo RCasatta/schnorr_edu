@@ -6,8 +6,6 @@ use context::CONTEXT;
 use point::Point;
 use point::point::point_mul;
 use point::point::point_add;
-use num_bigint::BigUint;
-use num_traits::{Zero, One};
 use rand::thread_rng;
 use rand::Rng;
 use Msg;
@@ -15,6 +13,8 @@ use point::jacobian_point::jacobian_point_mul;
 use point::jacobian_point::jacobian_point_add;
 use point::jacobian_point::generator_mul;
 use point::jacobian_point::JacobianPoint;
+use scalar::integer_from_bytes;
+use rug::Integer;
 
 /// The following functions are less efficient and kept here for reference to be run by benchmarks
 /// for future reference
@@ -43,8 +43,8 @@ pub fn schnorr_verify(msg : &Msg, pub_key: &Point, signature: &Signature) -> boo
     }
 
     let signature_bytes = signature.as_bytes();
-    let r = BigUint::from_bytes_be(&signature_bytes[..32]);
-    let s = BigUint::from_bytes_be(&signature_bytes[32..]);
+    let r = integer_from_bytes(&signature_bytes[..32]);
+    let s = integer_from_bytes(&signature_bytes[32..]);
     if r >= CONTEXT.p.0 || s >= CONTEXT.n.0 {  // TODO Probably can't happen since ScalarN always < N
         return false;
     }
@@ -94,11 +94,11 @@ pub fn schnorr_batch_verify(messages : &Vec<Msg>, pub_keys:  &Vec<Point>, signat
             return false;
         }
         R_vec.push( Point{x: signature.Rx.clone(), y});
-        let a = if i == 0 { ScalarN(BigUint::one()) } else { rng.gen::<ScalarN>() };
+        let a = if i == 0 { ScalarN(Integer::from(1)) } else { rng.gen::<ScalarN>() };
         a_vec.push(a);
     }
 
-    let mut coeff= ScalarN(BigUint::zero());
+    let mut coeff= ScalarN(Integer::new());
     let mut R_point_sum = None;
     let mut P_point_sum = None;
     for i in 0..messages.len() {
@@ -144,11 +144,11 @@ pub fn schnorr_jacobi_batch_verify(messages : &Vec<Msg>, pub_keys:  &Vec<Point>,
             return false;
         }
         R_vec.push(  JacobianPoint::from(Point{x: signature.Rx.clone(), y} ));
-        let a = if i == 0 { ScalarN(BigUint::one()) } else { rng.gen::<ScalarN>() };
+        let a = if i == 0 { ScalarN(Integer::from(1)) } else { rng.gen::<ScalarN>() };
         a_vec.push(a);
     }
 
-    let mut coeff= ScalarN(BigUint::zero());
+    let mut coeff= ScalarN(Integer::new());
     let mut R_point_sum = None;
     let mut P_point_sum = None;
     //Fail if (s1 + a2s2 + ... + ausu)G ≠ R1 + a2R2 + ... + auRu + e1P1 + (a2e2)P2 + ... + (aueu)Pu

@@ -17,10 +17,7 @@ pub mod util;
 pub mod old;
 
 use std::ops::{Mul,Sub,Add};
-use num_traits::One;
-use num_bigint::BigUint;
 use util::signature::Signature;
-use num_traits::Zero;
 use std::collections::BinaryHeap;
 use util::term::Term;
 use scalar::ScalarN;
@@ -31,6 +28,8 @@ use context::CONTEXT;
 use rand::thread_rng;
 use rand::Rng;
 use std::borrow::Borrow;
+use rug::Integer;
+use scalar::integer_from_bytes;
 
 type Msg = [u8;32];
 
@@ -62,8 +61,8 @@ pub fn schnorr_verify(msg : &Msg, pub_key: &Point, signature: &Signature) -> boo
     }
 
     let signature_bytes = signature.as_bytes();
-    let r = BigUint::from_bytes_be(&signature_bytes[..32]);
-    let s = BigUint::from_bytes_be(&signature_bytes[32..]);
+    let r = integer_from_bytes(&signature_bytes[..32]);
+    let s = integer_from_bytes(&signature_bytes[32..]);
     if r >= CONTEXT.p.0 || s >= CONTEXT.n.0 {
         return false;
     }
@@ -117,12 +116,12 @@ pub fn schnorr_batch_verify(messages : &Vec<Msg>, pub_keys:  &Vec<Point>, signat
             return false;
         }
         R_vec.push(  JacobianPoint::from(Point{x: signature.Rx.clone(), y} ));
-        let a = if i == 0 { ScalarN(BigUint::one()) } else { rng.gen::<ScalarN>() };
+        let a = if i == 0 { ScalarN(Integer::from(1u32)) } else { rng.gen::<ScalarN>() };
         a_vec.push(a);
     }
 
     //Fail if (s1 + a2s2 + ... + ausu)G ≠ R1 + a2R2 + ... + auRu + e1P1 + (a2e2)P2 + ... + (aueu)Pu
-    let mut coeff= ScalarN(BigUint::zero());
+    let mut coeff= ScalarN(Integer::new());
     let mut inner_product : Vec<Term> = Vec::new();
     for i in 0..messages.len() {
         let signature = &signatures[i];
@@ -159,7 +158,6 @@ pub fn schnorr_batch_verify(messages : &Vec<Msg>, pub_keys:  &Vec<Point>, signat
 #[cfg(test)]
 mod tests {
     use rand::prelude::*;
-    use num_bigint::BigUint;
     use super::*;
     use data_encoding::HEXUPPER;
     use scalar::vec_to_32_bytes;
@@ -258,7 +256,7 @@ mod tests {
     fn test_bip_sign() {
         fn test_vector( private : &str, public : &str, message : &str, signature : &str) {
             let sec_key_bytes = vec_to_32_bytes(&HEXUPPER.decode(private.as_bytes()).unwrap());
-            let sec_key = ScalarN::new(BigUint::from_bytes_be(&sec_key_bytes));
+            let sec_key = ScalarN::new(integer_from_bytes(&sec_key_bytes));
             let pub_key : Point = generator_mul(&sec_key).unwrap().into();
             assert_eq!(HEXUPPER.encode( &pub_key.as_bytes()[..]), public);
             let message = vec_to_32_bytes( &HEXUPPER.decode(message.as_bytes()).unwrap() );

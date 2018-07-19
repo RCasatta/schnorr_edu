@@ -34,15 +34,14 @@ mod tests {
     use std::collections::BinaryHeap;
     use scalar::ScalarN;
     use util::term::Term;
-    use num_bigint::BigUint;
-    use num_traits::One;
     use context::CONTEXT;
     use std::ops::Add;
+    use rug::Integer;
 
     #[test]
     fn test_heap() {
         let mut heap = BinaryHeap::new();
-        let one = ScalarN(BigUint::one());
+        let one = ScalarN(Integer::from(1));
         let two = one.clone().add(one.clone());
         let three = two.clone().add(one.clone());
         let five = two.clone().add(three.clone());

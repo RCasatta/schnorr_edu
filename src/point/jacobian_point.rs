@@ -1,14 +1,12 @@
 use scalar::ScalarP;
 use scalar::ScalarN;
 use point::Point;
-use num_bigint::BigUint;
-use num_traits::One;
 use context::CONTEXT;
 use context::G_MUL_CACHE;
 use std::ops::{Mul,Sub,Add};
 use std::fmt;
-use num_traits::Zero;
 use std::borrow::Borrow;
+use rug::Integer;
 
 // Very bad defining Eq like this since two equal Jacobian Point could have different coordinates
 // however it's useful for now and used only in the HashMap where values are normalized
@@ -31,7 +29,7 @@ impl From<Point> for JacobianPoint {
         JacobianPoint{
             x:p.x,
             y:p.y,
-            z:ScalarP(BigUint::one())
+            z:ScalarP(Integer::from(1))
         }
     }
 }
@@ -99,7 +97,7 @@ impl JacobianPoint {
     }
 
     pub fn jacobi(&self) -> bool {
-        self.y.borrow().mul(&self.z).0.is_one()
+        self.y.borrow().mul(&self.z).0 == 1
     }
 }
 
@@ -113,7 +111,7 @@ impl Add for JacobianPoint {
 
 
 pub fn jacobian_point_double(p : &JacobianPoint) -> Option<JacobianPoint> {
-    if p.y.0.is_zero() {
+    if p.y.0 == 0 {
         return None;
     }
     let p_x_pow2 = p.x.borrow().mul(&p.x);
@@ -209,10 +207,13 @@ pub fn jacobian_point_add(p1 : Option<&JacobianPoint>, p2 : Option<&JacobianPoin
 pub fn generator_mul(n : &ScalarN) -> Option<JacobianPoint> {
     let mut acc : Option<JacobianPoint> = None;
     let mut _junk : Option<JacobianPoint> = None;
-    for (i,byte) in n.0.to_bytes_le().iter().enumerate() {
-        let index = i * 256usize  + usize::from(*byte);
+    let mut current = n.0.to_owned();
+
+    for i in 0..256 {
+        let byte = current.to_u8().unwrap();
+        let index = i * 256usize  + usize::from(byte);
         let point = G_MUL_CACHE.get(index);
-        if *byte != 0u8 {
+        if byte != 0u8 {
             acc  = mixed_point_add(acc.as_ref(), point);
         }  else {
             // the purpose of this arm is to try to achieve constant time
@@ -220,6 +221,7 @@ pub fn generator_mul(n : &ScalarN) -> Option<JacobianPoint> {
             // this lib is totally unsecure
             _junk = mixed_point_add(acc.as_ref(), Some(&CONTEXT.G));
         }
+        current = current << 8;
     }
     acc
 }
@@ -228,18 +230,19 @@ pub fn generator_mul(n : &ScalarN) -> Option<JacobianPoint> {
 
 #[allow(non_snake_case)]
 pub fn jacobian_point_mul( P: &JacobianPoint, n : &ScalarN) -> Option<JacobianPoint> {
-    let mut exponent = BigUint::one()<<255;
+    let mut exponent : Integer = Integer::from(1)<<255;
     let mut acc : Option<JacobianPoint> = None;
 
     loop {
         if acc.is_some() {
             acc = acc.unwrap().double();
         }
-        if !(&n.0 & &exponent).is_zero() {
+        let val : Integer = (&n.0 & &exponent).into();
+        if val!=0 {
             acc = jacobian_point_add(acc.as_ref(), Some(P));
         }
-        exponent >>= 1usize;
-        if exponent.is_zero() {
+        exponent = exponent >> 1;
+        if exponent == 0 {
             break;
         }
     }
@@ -309,7 +312,7 @@ mod tests {
         let g3 = point_add(Some(CONTEXT.G.clone()),Some(g2.clone())).unwrap();
         let g3_jac = jacobian_point_add(Some(&j), Some(&g2_jac)).unwrap();
         assert_eq!(g3.clone(), Point::from(g3_jac));
-        let three = ScalarN(BigUint::one().mul(3u32));
+        let three = ScalarN(Integer::from(3));
 
         let g3_jac = jacobian_point_mul(&j, &three).unwrap();
         assert_eq!(g3, Point::from(g3_jac.clone()));
@@ -340,7 +343,7 @@ mod tests {
     #[test]
     fn test_mul_wnaf() {
         //jacobian_point_mul_4naf
-        let two = ScalarN(BigUint::from(2u32));
+        let two = ScalarN(Integer::from(2));
 
         let option = jacobian_point_mul_wnaf(&CONTEXT.G_jacobian, &two, 4i8);
         assert_eq!(CONTEXT.G_jacobian.clone().double(), option);

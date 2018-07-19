@@ -1,22 +1,19 @@
-use num_bigint::BigUint;
-use num_bigint::BigInt;
 use std::ops::{Sub,Add,Rem,Mul};
 use context::CONTEXT;
 use rand::distributions::Distribution;
 use rand::distributions::Standard;
 use rand::Rng;
-use num_integer::Integer;
 use super::to_32_bytes;
 use super::finite_sub;
 use std::fmt;
-use num_traits::ToPrimitive;
 use std::ops::SubAssign;
 use std::ops::DivAssign;
-use num_traits::Zero;
 use std::borrow::Borrow;
+use scalar::integer_from_bytes;
+use rug::Integer;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
-pub struct ScalarN(pub BigUint);
+pub struct ScalarN(pub Integer);
 
 
 impl fmt::Display for ScalarN {
@@ -26,14 +23,14 @@ impl fmt::Display for ScalarN {
 }
 
 impl ScalarN {
-    pub fn new(val: BigUint) -> Self {
+    pub fn new(val: Integer) -> Self {
         match val < CONTEXT.n.0 {
             true  => ScalarN(val),
             false => ScalarN(val.rem(&CONTEXT.n.0)),  // TODO not sure if panic here
         }
     }
     pub fn from_bytes(bytes: &[u8]) -> Self {
-        Self::new(BigUint::from_bytes_be(bytes))
+        Self::new(integer_from_bytes(bytes))
     }
     pub fn to_32_bytes(&self) -> [u8; 32] {
         to_32_bytes(&self.0)
@@ -76,7 +73,7 @@ impl<'a> Mul<&'a ScalarN> for ScalarN {
     type Output = ScalarN;
 
     fn mul(self, other: &ScalarN) -> ScalarN {
-        ScalarN::new(self.0.borrow().mul(&other.0) )
+        ScalarN::new(self.0.borrow().mul(&other.0).into() )
     }
 }
 
@@ -86,7 +83,7 @@ impl Distribution<ScalarN> for Standard {
         let mut bytes = [0u8;32];
         loop {
             rng.fill_bytes(&mut bytes);
-            let be = BigUint::from_bytes_be(&bytes);
+            let be = integer_from_bytes(&bytes);
             if be < CONTEXT.n.0 {
                 return ScalarN::new(be);
             }
@@ -110,11 +107,11 @@ impl ScalarN {
     pub fn to_wnaf(self, w : i8) -> Vec<i8> {
         assert!(w>1 && w<8);
 
-        let mut d = BigInt::from(self.0);
+        let mut d = self.0.clone();
         let mut naf = Vec::with_capacity(256usize);
-        let two_raised_w = BigInt::from(2i16.pow(w as u32));
-        let two_raised_w_sub1 = BigInt::from(2i8.pow( (w-1) as u32));
-        while !d.is_zero() {
+        let two_raised_w = Integer::from(2i16.pow(w as u32));
+        let two_raised_w_sub1 = Integer::from(2i8.pow( (w-1) as u32));
+        while d != 0 {
             if d.is_odd() {
                 let mods = mods(&d, &two_raised_w, &two_raised_w_sub1);
                 naf.push(mods.to_i8().unwrap());
@@ -129,14 +126,14 @@ impl ScalarN {
     }
 
     pub fn from_naf(v : Vec<i8>) -> Self{
-        let mut acc = BigInt::zero();
+        let mut acc = Integer::new();
         for (i,el) in v.iter().enumerate() {
             if i>0 {
                 acc*=2;
             }
-            acc += *el;
+            acc = acc + (*el as u32);
         }
-        ScalarN( acc.to_biguint().unwrap() )
+        ScalarN( acc )
     }
 }
 
@@ -147,8 +144,8 @@ impl ScalarN {
        return d mod 2w
 */
 
-fn mods(d: &BigInt, two_raised_w : &BigInt, two_raised_w_sub1: &BigInt) -> BigInt {
-    let a = d.rem(two_raised_w);
+fn mods(d: &Integer, two_raised_w : &Integer, two_raised_w_sub1: &Integer) -> Integer {
+    let a : Integer = d.rem(two_raised_w).into();
     match a >= *two_raised_w_sub1 {
         true =>  a - two_raised_w,
         false => a,
@@ -164,7 +161,7 @@ mod tests {
 
     #[test]
     fn test_naf() {
-        let n = ScalarN(BigUint::from(7u32));
+        let n = ScalarN(Integer::from(7u32));
         //println!("n: {:#018b}", n.0);
         //println!("{:?}", );
         let expected = [1i8,0,0,-1];
@@ -173,7 +170,7 @@ mod tests {
         assert_eq!(n , ScalarN::from_naf(naf));
 
         for i in 1..100u32 {
-            let n = ScalarN(BigUint::from(i));
+            let n = ScalarN(Integer::from(i));
 
             assert_eq!(&n , &ScalarN::from_naf(n.clone().to_wnaf(7)));
             assert_eq!(&n , &ScalarN::from_naf(n.clone().to_wnaf(6)));

@@ -1,14 +1,12 @@
 use std::fmt;
-use num_bigint::BigUint;
-use num_traits::Zero;
-use num_integer::Integer;
 use context::CONTEXT;
 use std::ops::{Mul,Sub,Add};
-use num_traits::One;
 use scalar::ScalarN;
 use scalar::ScalarP;
 use point::JacobianPoint;
 use std::borrow::Borrow;
+use rug::Integer;
+use scalar::integer_from_bytes;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Point {
@@ -24,7 +22,10 @@ impl fmt::Display for Point {
 
 impl Default for Point {
     fn default() -> Self {
-        Point{x: ScalarP(BigUint::zero()), y: ScalarP(BigUint::zero())}
+        Point{
+            x: ScalarP(Integer::new()),
+            y: ScalarP(Integer::new()),
+            }
     }
 }
 
@@ -32,7 +33,7 @@ impl Default for Point {
 impl From<JacobianPoint> for Point {
     fn from(j: JacobianPoint) -> Self {
         //(X / Z^2, Y / Z^3).
-        if j.z.0.is_one() {
+        if j.z.0 == 1 {
             return Point{x:j.x,y:j.y}
         }
         let z_pow2 = j.z.borrow().mul(&j.z);
@@ -76,7 +77,7 @@ impl Point {
         if bytes.len()!=33 {
             return None;
         }
-        let x =  ScalarP::new(BigUint::from_bytes_be(&bytes[1..]));
+        let x =  ScalarP::new(integer_from_bytes(&bytes[1..]));
         let y2 = x.pow(&CONTEXT.three).add(&CONTEXT.seven);
 
         // in secp256k1 sqrt is equal to pow( (p-1)/4 )
@@ -92,9 +93,9 @@ impl Point {
         if bytes.len()!=64 {
             return None;
         }
-        let x =  ScalarP::new(BigUint::from_bytes_be(&bytes[..32]));
-        let y =  ScalarP::new(BigUint::from_bytes_be(&bytes[32..]));
-        if x.0.is_zero() && y.0.is_zero() {
+        let x =  ScalarP::new(integer_from_bytes(&bytes[..32]));
+        let y =  ScalarP::new(integer_from_bytes(&bytes[32..]));
+        if x.0 == 0 && y.0 == 0 {
             return None;
         }
         Some(Point {x,y})
@@ -132,12 +133,12 @@ pub fn point_mul(mut p: Point, n : ScalarN) -> Option<Point> {
     let mut n = n.0;
 
     loop {
-        let (ris, rem) = n.div_rem(&CONTEXT.two.0);
+        let (ris, rem) = n.div_rem(CONTEXT.two.0.clone());
 
-        if rem.is_one() {
+        if rem == 1 {
             r = point_add(r,Some(p.clone()));
         }
-        if ris.is_zero() {
+        if ris == 0 {
             return r;
         }
         p = point_add(Some(p.clone()),Some(p)).unwrap();
@@ -179,9 +180,6 @@ pub fn point_add(p1 : Option<Point>, p2 : Option<Point>) -> Option<Point> {
 
 #[cfg(test)]
 mod tests {
-    use num_bigint::BigUint;
-    use num_integer::Integer;
-    use std::str::FromStr;
     use context::CONTEXT;
     use point::point::*;
     use data_encoding::HEXLOWER;
@@ -196,7 +194,7 @@ mod tests {
         assert_eq!("89565891926547004231252920425935692360644145829622209833684329913297188986597", format!("{}", g2.x.0));
         assert_eq!("12158399299693830322967808612713398636155367887041628176798871954788371653930", format!("{}", g2.y.0));
 
-        let g2b = point_mul(CONTEXT.G.clone(), ScalarN(BigUint::one().mul(2u32))).unwrap();
+        let g2b = point_mul(CONTEXT.G.clone(), ScalarN(Integer::from(2u32))).unwrap();
         assert_eq!(g2.x, g2b.x);
         assert_eq!(g2.y, g2b.y);
 
@@ -204,14 +202,14 @@ mod tests {
         assert_eq!("25583027980570883691656905877401976406448868254816295069919888960541586679410", format!("{}", g3.y.0));
         assert_eq!("112711660439710606056748659173929673102114977341539408544630613555209775888121", format!("{}", g3.x.0));
 
-        let g3b = point_mul(CONTEXT.G.clone(), ScalarN(BigUint::one().mul(3u32))).unwrap();
+        let g3b = point_mul(CONTEXT.G.clone(), ScalarN(Integer::from(3u32))).unwrap();
         assert_eq!("112711660439710606056748659173929673102114977341539408544630613555209775888121", format!("{}", g3b.x.0));
 
-        let g3b = point_mul(CONTEXT.G.clone(), ScalarN(BigUint::one().mul(3u32))).unwrap();
+        let g3b = point_mul(CONTEXT.G.clone(), ScalarN(Integer::from(3u32))).unwrap();
         assert_eq!(g3.x, g3b.x);
         assert_eq!(g3.y, g3b.y);
 
-        let g8675309 = point_mul(CONTEXT.G.clone(), ScalarN(BigUint::from_str("8675309").unwrap())).unwrap();
+        let g8675309 = point_mul(CONTEXT.G.clone(), ScalarN(Integer::from(8675309))).unwrap();
         assert_eq!("66641067246008511739397675128206923493293851901978595085468284019495272794983", format!("{}", g8675309.x.0));
         assert_eq!("22882405661336615738255795181502754819791112635438119114432507482219105379189", format!("{}", g8675309.y.0));
 

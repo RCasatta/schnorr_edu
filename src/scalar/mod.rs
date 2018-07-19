@@ -1,29 +1,29 @@
 use crypto::sha2::Sha256;
-use num_bigint::BigUint;
 use crypto::digest::Digest;
 use std::ops::{Sub,Add};
-use num_traits::Num;
+use rug::Integer;
 pub use self::scalar_n::ScalarN;
 pub use self::scalar_p::ScalarP;
+use data_encoding::HEXLOWER;
 
 pub mod scalar_n;
 pub mod scalar_p;
 
 
-fn finite_sub(a : &BigUint, b : &BigUint, p_or_n : &BigUint) -> BigUint{
+fn finite_sub(a : &Integer, b : &Integer, p_or_n : &Integer) -> Integer{
     if a > b {
-        a.sub(b)
+        a.sub(b).into()
     } else {
-        finite_sub(&a.add(p_or_n), b, p_or_n)
+        finite_sub(&a.add(p_or_n).into(), b, p_or_n)
     }
 }
 
-pub fn sha256(input : &[u8]) -> BigUint {
+pub fn sha256(input : &[u8]) -> Integer {
     let mut hashed = [0u8;32];
     let mut hasher = Sha256::new();
     hasher.input(input);
     hasher.result(&mut hashed);
-    BigUint::from_bytes_be( &hashed[..])
+    integer_from_bytes( &hashed[..])
 }
 
 
@@ -35,8 +35,9 @@ pub fn concat_and_hash(a : &[u8], b : &[u8], c : &[u8]) -> ScalarN {
     ScalarN::new(sha256(&vec))
 }
 
-fn to_32_bytes(val : &BigUint) -> [u8;32] {
-    let bytes = val.to_bytes_be();
+fn to_32_bytes(val : &Integer) -> [u8;32] {
+
+    let bytes = HEXLOWER.decode( val.to_string_radix(16).as_bytes() ).unwrap();
     let mut result = [0u8;32];
     let start = 32-bytes.len();
     assert!(start<=32);
@@ -52,7 +53,9 @@ pub fn vec_to_32_bytes(val : &Vec<u8>) -> [u8;32] {
     result
 }
 
-
+pub fn integer_from_bytes(val : &[u8]) -> Integer {
+    Integer::from_str_radix(&HEXLOWER.encode(val), 16).unwrap()
+}
 
 
 #[cfg(test)]
@@ -61,7 +64,6 @@ mod tests {
     use rand::thread_rng;
     use rand::Rng;
     use num_bigint::BigUint;
-    use apint::Radix;
     use rug::Integer;
     use num_traits::Num;
 
@@ -69,7 +71,7 @@ mod tests {
     fn test_apint() {
         let mut rng = thread_rng();
         let val : u64 = rng.gen();
-        let apint = ApInt::from_u64(val);
+        let _apint = ApInt::from_u64(val);
         //println!("{}",apint.as_string_with_radix(Radix::new(10).unwrap()));
         //let biguint = BigUint::from(val);
         //println!("{:?}",biguint);
