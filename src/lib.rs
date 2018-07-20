@@ -43,7 +43,7 @@ pub fn schnorr_sign(msg : &Msg, sec_key: &ScalarN) -> Signature {
     let R_jacobian = generator_mul(&k).unwrap();
     let R = Point::from(R_jacobian);
     if !R.y.jacobi() {
-        k = CONTEXT.n.borrow().sub(k);
+        k = CONTEXT.n.clone().sub(&k);
     }
     let Rx = R.x.to_32_bytes();
     let dG_jacobian = generator_mul(&sec_key).unwrap();
@@ -68,7 +68,7 @@ pub fn schnorr_verify(msg : &Msg, pub_key: &Point, signature: &Signature) -> boo
     }
     let e = concat_and_hash(&signature_bytes[..32], &pub_key.as_bytes()[..], msg);
     let a = generator_mul(&signature.s).unwrap();
-    let b = JacobianPoint::from(pub_key.to_owned()).mul(&CONTEXT.n.borrow().sub(e));
+    let b = JacobianPoint::from(pub_key.to_owned()).mul(&CONTEXT.n.clone().sub(&e));
     let R = jacobian_point_add(Some(&a), Some(&b));
     if R.is_none() {
         return false;
@@ -76,12 +76,12 @@ pub fn schnorr_verify(msg : &Msg, pub_key: &Point, signature: &Signature) -> boo
     let R = R.unwrap();
 
     // jacobi(y(P)) can be implemented as jacobi(yz mod p).
-    if !(R.y.borrow().mul(&R.z)).jacobi() {
+    if !(R.y.clone().mul(&R.z)).jacobi() {
         return false;
     }
 
     // x(P) ≠ r can be implemented as x ≠ z^2r mod p.
-    let Rx = R.z.borrow().mul(&R.z).mul(&signature.Rx );
+    let Rx = R.z.clone().mul(&R.z).mul(&signature.Rx );
 
     if R.x != Rx {
         return false;
@@ -111,7 +111,7 @@ pub fn schnorr_batch_verify(messages : &Vec<Msg>, pub_keys:  &Vec<Point>, signat
         e_vec.push(e);
         let c = signature.Rx.borrow().pow(&CONTEXT.three).add(&CONTEXT.seven);
         let y = c.pow(&CONTEXT.p_add1_div4);
-        let y_pow2 = y.borrow().mul(&y);
+        let y_pow2 = y.clone().mul(&y);
         if y_pow2 != c {
             return false;
         }
@@ -134,7 +134,7 @@ pub fn schnorr_batch_verify(messages : &Vec<Msg>, pub_keys:  &Vec<Point>, signat
         inner_product.push(Term {coeff: a.to_owned(), point: R.to_owned() });
         inner_product.push(Term {coeff: a.to_owned().mul(e), point: JacobianPoint::from( P.to_owned())  });
     }
-    inner_product.push(Term{coeff: CONTEXT.n.borrow().sub( coeff), point: CONTEXT.G_jacobian.clone() });  // -sG
+    inner_product.push(Term{coeff: CONTEXT.n.clone().sub( &coeff), point: CONTEXT.G_jacobian.clone() });  // -sG
 
     let mut inner_product : BinaryHeap<Term> = BinaryHeap::from(inner_product);
 
@@ -147,7 +147,7 @@ pub fn schnorr_batch_verify(messages : &Vec<Msg>, pub_keys:  &Vec<Point>, signat
         }
         inner_product.push(Term {coeff: t1.coeff.clone(), point: option.unwrap() });
         if t0.coeff != t1.coeff {
-            inner_product.push(Term {coeff: t0.coeff-t1.coeff, point: t0.point });
+            inner_product.push(Term {coeff: t0.coeff-&t1.coeff, point: t0.point });
         }
     }
     return false;

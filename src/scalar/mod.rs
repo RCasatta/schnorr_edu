@@ -1,6 +1,5 @@
 use crypto::sha2::Sha256;
 use crypto::digest::Digest;
-use std::ops::{Sub,Add};
 use rug::Integer;
 pub use self::scalar_n::ScalarN;
 pub use self::scalar_p::ScalarP;
@@ -11,13 +10,6 @@ pub mod scalar_n;
 pub mod scalar_p;
 
 
-fn finite_sub(a : &Integer, b : &Integer, p_or_n : &Integer) -> Integer{
-    if a > b {
-        a.sub(b).into()
-    } else {
-        finite_sub(&a.add(p_or_n).into(), b, p_or_n)
-    }
-}
 
 pub fn sha256(input : &[u8]) -> Integer {
     let mut hashed = [0u8;32];
@@ -57,24 +49,3 @@ pub fn vec_to_32_bytes(val : &Vec<u8>) -> [u8;32] {
     result
 }
 
-
-#[cfg(test)]
-mod tests {
-    use apint::ApInt;
-    use rand::thread_rng;
-    use rand::Rng;
-
-    #[test]
-    fn test_apint() {
-        let mut rng = thread_rng();
-        let val : u64 = rng.gen();
-        let _apint = ApInt::from_u64(val);
-
-        //println!("{}",apint.as_string_with_radix(Radix::new(10).unwrap()));
-        //let biguint = BigUint::from(val);
-        //println!("{:?}",biguint);
-
-    }
-
-
-}

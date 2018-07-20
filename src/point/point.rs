@@ -4,7 +4,6 @@ use std::ops::{Mul,Sub,Add};
 use scalar::ScalarN;
 use scalar::ScalarP;
 use point::JacobianPoint;
-use std::borrow::Borrow;
 use rug::Integer;
 use util::rug::integer_from_bytes;
 
@@ -36,8 +35,8 @@ impl From<JacobianPoint> for Point {
         if j.z.0 == 1 {
             return Point{x:j.x,y:j.y}
         }
-        let z_pow2 = j.z.borrow().mul(&j.z);
-        let z_pow3 = j.z.borrow().mul(&z_pow2);
+        let z_pow2 = j.z.clone().mul(&j.z);
+        let z_pow3 = j.z.clone().mul(&z_pow2);
         let x = j.x.mul(&z_pow2.inv());
         let y = j.y.mul( &z_pow3.inv() );
         Point{x,y}
@@ -47,8 +46,8 @@ impl From<JacobianPoint> for Point {
 impl Point {
 
     pub fn on_curve(&self) -> bool {
-        let pow1 = self.y.borrow().mul(&self.y);
-        let pow2 = self.x.borrow().mul(&self.x).mul(&self.x);
+        let pow1 = self.y.clone().mul(&self.y);
+        let pow2 = self.x.clone().mul(&self.x).mul(&self.x);
         let sub = pow1.sub(&pow2);
 
         sub % &CONTEXT.p == CONTEXT.seven
@@ -114,7 +113,7 @@ impl Point {
     pub fn negate(self) -> Self {
         Point {
             x: self.x,
-            y: CONTEXT.p.borrow()-&self.y,
+            y: CONTEXT.p.clone()-&self.y,
         }
     }
 }
@@ -157,19 +156,19 @@ pub fn point_add(p1 : Option<Point>, p2 : Option<Point>) -> Option<Point> {
             }
             let lam = if  p1 == p2 {
                 // lam = (3 * p1[0] * p1[0] * pow(2 * p1[1], p - 2, p)) % p
-                let inv = p1.y.borrow().mul(&CONTEXT.two).inv();
+                let inv = p1.y.clone().mul(&CONTEXT.two).inv();
                 CONTEXT.three.clone().mul(&p1.x).mul(&p1.x).mul(&inv)
             } else {
                 // lam = ((p2[1] - p1[1]) * pow(p2[0] - p1[0], p - 2, p)) % p
-                let inv = p2.x.borrow().sub(&p1.x).inv();
+                let inv = p2.x.clone().sub(&p1.x).inv();
                 p2.y.clone().sub(&p1.y.clone()).mul(&inv)
             };
             // x3 = (lam * lam - p1[0] - p2[0]) % p
-            let x3 = lam.borrow().mul(&lam).sub(&p1.x).sub(&p2.x);
+            let x3 = lam.clone().mul(&lam).sub(&p1.x).sub(&p2.x);
 
 
             //(x3, (lam * (p1[0] - x3) - p1[1]) % p)
-            let sub = p1.x.borrow().sub(&x3);
+            let sub = p1.x.clone().sub(&x3);
             let y3 = lam.mul(&sub).sub(&p1.y);
 
             Some(Point{x:x3,y:y3})

@@ -1,10 +1,9 @@
-use std::ops::{Sub,Add,Rem,Mul};
+use std::ops::{Add,Sub,Rem,Mul};
 use context::CONTEXT;
 use rand::distributions::Distribution;
 use rand::distributions::Standard;
 use rand::Rng;
 use super::to_32_bytes;
-use super::finite_sub;
 use std::fmt;
 use std::ops::SubAssign;
 use std::ops::DivAssign;
@@ -36,30 +35,6 @@ impl ScalarN {
         to_32_bytes(&self.0)
     }
 }
-impl Sub for ScalarN {
-    type Output = ScalarN;
-
-    fn sub(self, other: ScalarN) -> <Self as Sub<ScalarN>>::Output {
-        ScalarN::new(finite_sub(&self.0, &other.0, &CONTEXT.n.0))
-    }
-}
-
-impl<'a, 'b> Sub<&'b ScalarN> for &'a ScalarN {
-    type Output = ScalarN;
-
-    fn sub(self, other: &'b ScalarN) -> ScalarN {
-        ScalarN::new(finite_sub(&self.0, &other.0, &CONTEXT.n.0))
-    }
-}
-
-impl<'a> Sub<ScalarN> for &'a ScalarN {
-    type Output = ScalarN;
-
-    fn sub(self, other: ScalarN) -> ScalarN {
-        ScalarN::new(finite_sub(&self.0, &other.0, &CONTEXT.n.0))
-    }
-}
-
 
 impl Add for ScalarN {
     type Output = ScalarN;
@@ -74,6 +49,22 @@ impl<'a> Mul<&'a ScalarN> for ScalarN {
 
     fn mul(self, other: &ScalarN) -> ScalarN {
         ScalarN::new(self.0.borrow().mul(&other.0).into() )
+    }
+}
+
+
+impl<'a> Sub<&'a ScalarN> for ScalarN {
+    type Output = ScalarN;
+
+    fn sub(self, other: &ScalarN) -> ScalarN {
+
+        let value = if self.0 > other.0 {
+            self.0.sub(&other.0)
+        } else {
+            self.0.add(&CONTEXT.p.0).sub(&other.0)
+        };
+
+        ScalarN::new(value)
     }
 }
 

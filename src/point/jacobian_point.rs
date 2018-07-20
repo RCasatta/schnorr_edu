@@ -5,10 +5,12 @@ use context::CONTEXT;
 use context::G_MUL_CACHE;
 use std::ops::{Mul,Sub,Add};
 use std::fmt;
-use std::borrow::Borrow;
 use rug::Integer;
 use num_bigint::BigUint;
 use num_traits::Num;
+use rug::Assign;
+use std::ops::MulAssign;
+use std::borrow::Borrow;
 
 // Very bad defining Eq like this since two equal Jacobian Point could have different coordinates
 // however it's useful for now and used only in the HashMap where values are normalized
@@ -42,11 +44,11 @@ impl PartialEq for JacobianPoint {
             return true;
         }
 
-        let u1 = self.x.borrow().mul(&other.z.borrow().pow(&CONTEXT.two));
-        let u2 = other.x.borrow().mul(&self.z.borrow().pow(&CONTEXT.two));
+        let u1 = self.x.clone().mul(&other.z.clone().pow(&CONTEXT.two));
+        let u2 = other.x.clone().mul(&self.z.clone().pow(&CONTEXT.two));
 
-        let s1 = self.y.borrow().mul(&other.z.borrow().pow(&CONTEXT.three));
-        let s2 = other.y.borrow().mul(&self.z.borrow().pow(&CONTEXT.three));
+        let s1 = self.y.clone().mul(&other.z.clone().pow(&CONTEXT.three));
+        let s2 = other.y.clone().mul(&self.z.clone().pow(&CONTEXT.three));
 
         if u1 == u2 && s1 == s2 {
             return true;
@@ -99,7 +101,7 @@ impl JacobianPoint {
     }
 
     pub fn jacobi(&self) -> bool {
-        self.y.borrow().mul(&self.z).0 == 1
+        self.y.clone().mul(&self.z).0 == 1
     }
 }
 
@@ -116,16 +118,16 @@ pub fn jacobian_point_double(p : &JacobianPoint) -> Option<JacobianPoint> {
     if p.y.0 == 0 {
         return None;
     }
-    let p_x_pow2 = p.x.borrow().mul(&p.x);
-    let p_y_pow2 = p.y.borrow().mul(&p.y);
-    let p_y_pow4 = p_y_pow2.borrow().mul(&p_y_pow2);
-    let s = CONTEXT.four.borrow().mul(&p.x).mul( &p_y_pow2 );
-    let m = CONTEXT.three.borrow().mul( &p_x_pow2);
-    let x = m.borrow().mul(&m).sub( &s.clone()
+    let p_x_pow2 = p.x.clone().mul(&p.x);
+    let p_y_pow2 = p.y.clone().mul(&p.y);
+    let p_y_pow4 = p_y_pow2.clone().mul(&p_y_pow2);
+    let s = CONTEXT.four.clone().mul(&p.x).mul( &p_y_pow2 );
+    let m = CONTEXT.three.clone().mul( &p_x_pow2);
+    let x = m.clone().mul(&m).sub( &s.clone()
         .mul(&CONTEXT.two));
-    let y = m.borrow().mul( &s.sub(&x) ).sub( &CONTEXT.eight.borrow()
+    let y = m.clone().mul( &s.sub(&x) ).sub( &CONTEXT.eight.clone()
         .mul(&p_y_pow4));
-    let z = CONTEXT.two.borrow().mul(&p.y).mul(&p.z);
+    let z = CONTEXT.two.clone().mul(&p.y).mul(&p.z);
     Some(JacobianPoint{x,y,z})
 }
 
@@ -137,14 +139,20 @@ pub fn mixed_point_add(p1 : Option<&JacobianPoint>, p2 : Option<&Point>) -> Opti
         (None, Some(p2)) => Some(JacobianPoint::from( p2.clone())),
         (Some(p1), Some(p2)) => {
 
-
-            let p1_z_pow2 = p1.z.borrow().mul(&p1.z);
+            let mut p1_z_pow2 = Integer::with_capacity(512);
+            p1_z_pow2.assign(&p1.z.0);
+            p1_z_pow2.mul_assign(&p1.z.0);
+            let p1_z_pow2 = ScalarP::new(p1_z_pow2);
 
             let u1 = &p1.x;
-            let u2 = p2.x.borrow().mul(&p1_z_pow2);
+
+            let mut u2 = Integer::with_capacity(512);
+            u2.assign(&p2.x.0);
+            u2.mul_assign(&p1_z_pow2.0);
+            let u2 = ScalarP::new(u2);
 
             let s1 = &p1.y;
-            let s2 = p2.y.borrow().mul(&p1_z_pow2.mul(&p1.z));
+            let s2 = p1_z_pow2.mul(&p1.z).mul(&p2.y);
 
             if *u1==u2 {
                 if *s1==s2 {
@@ -154,15 +162,22 @@ pub fn mixed_point_add(p1 : Option<&JacobianPoint>, p2 : Option<&Point>) -> Opti
                 }
             }
             let h = u2.sub(&u1);
-            let h_pow2 = h.borrow().mul(&h);
-            let h_pow3 = h_pow2.borrow().mul(&h);
+            let h_pow2 = h.clone().mul(&h);
+            //println!("capacity {}", h_pow2.0.capacity());
+
+            let h_pow3 = h_pow2.clone().mul(&h);
             let r = s2.sub(&s1);
-            let r_pow2 = r.borrow().mul(&r);
+            let r_pow2 = r.clone().mul(&r);
+
             let x3 = r_pow2
                 .sub( &h_pow3 )
-                .sub( &u1.borrow().mul(&CONTEXT.two).mul(&h_pow2 ) );
-            let y3 = r.mul( &u1.mul(&h_pow2 ).sub(&x3) )
-                .sub(&s1.mul(&h_pow3));
+                .sub( &u1.clone().mul(&CONTEXT.two).mul(&h_pow2 ) );
+
+            let u1_mul_h_pow2= h_pow2.mul(&u1 );
+
+            let y3 = r.mul( u1_mul_h_pow2.sub(&x3).borrow() )
+                .sub(h_pow3.mul(&s1).borrow() );
+
             let z3 = h.mul(&p1.z);
             Some(JacobianPoint{x:x3,y:y3,z:z3})
         }
@@ -176,14 +191,14 @@ pub fn jacobian_point_add(p1 : Option<&JacobianPoint>, p2 : Option<&JacobianPoin
         (Some(p1), None) => Some(p1.clone()),
         (None, Some(p2)) => Some(p2.clone()),
         (Some(p1), Some(p2)) => {
-            let p2_z_pow2 = p2.z.borrow().mul(&p2.z);
-            let p1_z_pow2 = p1.z.borrow().mul(&p1.z);
+            let p2_z_pow2 = p2.z.clone().mul(&p2.z);
+            let p1_z_pow2 = p1.z.clone().mul(&p1.z);
 
-            let u1 = p1.x.borrow().mul(&p2_z_pow2);
-            let u2 = p2.x.borrow().mul(&p1_z_pow2);
+            let u1 = p1.x.clone().mul(&p2_z_pow2);
+            let u2 = p2.x.clone().mul(&p1_z_pow2);
 
-            let s1 = p1.y.borrow().mul(&p2_z_pow2.mul(&p2.z));
-            let s2 = p2.y.borrow().mul(&p1_z_pow2.mul(&p1.z));
+            let s1 = p1.y.clone().mul(&p2_z_pow2.mul(&p2.z));
+            let s2 = p2.y.clone().mul(&p1_z_pow2.mul(&p1.z));
 
             if u1==u2 {
                 if s1==s2 {
@@ -193,13 +208,13 @@ pub fn jacobian_point_add(p1 : Option<&JacobianPoint>, p2 : Option<&JacobianPoin
                 }
             }
             let h = u2.sub(&u1);
-            let h_pow2 = h.borrow().mul(&h);
-            let h_pow3 = h_pow2.borrow().mul(&h);
+            let h_pow2 = h.clone().mul(&h);
+            let h_pow3 = h_pow2.clone().mul(&h);
             let r = s2.sub(&s1);
-            let r_pow2 = r.borrow().mul(&r);
+            let r_pow2 = r.clone().mul(&r);
             let x3 = r_pow2
                 .sub( &h_pow3 )
-                .sub( &u1.borrow().mul(&CONTEXT.two).mul(&h_pow2 ) );
+                .sub( &u1.clone().mul(&CONTEXT.two).mul(&h_pow2 ) );
             let y3 = r.mul( &u1.mul(&h_pow2 ).sub(&x3) )
                 .sub(&s1.mul(&h_pow3));
             let z3 = h.mul(&p1.z).mul(&p2.z);

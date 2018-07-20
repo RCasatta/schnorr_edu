@@ -74,6 +74,7 @@ fn benchmark_int_libraries(c: &mut Criterion) {
         let a =   thread_rng().choose(&inputs.apints).unwrap();
         let b =   thread_rng().choose(&inputs.apints).unwrap();
         let result = a.mul(b);
+        let result = result.mul(b);
         criterion::black_box(result);
     }));
 
@@ -81,15 +82,17 @@ fn benchmark_int_libraries(c: &mut Criterion) {
         let a =   thread_rng().choose(&inputs.biguints).unwrap();
         let b =   thread_rng().choose(&inputs.biguints).unwrap();
         let result = a.mul(b);
+        let result = result.mul(b);
         criterion::black_box(result);
     }));
 
     let fun_rugs = Fun::new("Rugs", move |b : &mut Bencher, inputs : &Inputs| b.iter(|| {
-        let mut result = Integer::with_capacity(512);
+        let mut result = Integer::with_capacity(1024);
         let a =   thread_rng().choose(&inputs.rugs).unwrap();
         let b =   thread_rng().choose(&inputs.rugs).unwrap();
         let incomplete_result = a.mul(b);
         result.assign(incomplete_result);
+        let result = result.mul(b);
         criterion::black_box(result);
     }));
 

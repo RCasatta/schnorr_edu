@@ -1,7 +1,6 @@
 use std::ops::{Sub,Add,Rem,Mul,Div};
 use context::CONTEXT;
 use super::to_32_bytes;
-use super::finite_sub;
 use std::fmt;
 use rand::distributions::Distribution;
 use rand::distributions::Standard;
@@ -50,17 +49,17 @@ impl<'a> Sub<&'a ScalarP> for ScalarP {
     type Output = ScalarP;
 
     fn sub(self, other: &ScalarP) -> ScalarP {
-        ScalarP::new(finite_sub(&self.0, &other.0, &CONTEXT.p.0))
+
+        let value = if self.0 > other.0 {
+            self.0.sub(&other.0)
+        } else {
+            self.0.add(&CONTEXT.p.0).sub(&other.0)
+        };
+
+        ScalarP::new(value)
     }
 }
 
-impl<'a, 'b> Sub<&'b ScalarP> for &'a ScalarP {
-    type Output = ScalarP;
-
-    fn sub(self, other: &'b ScalarP) -> ScalarP {
-        ScalarP::new(finite_sub(&self.0, &other.0, &CONTEXT.p.0))
-    }
-}
 
 impl<'a> Add<&'a ScalarP> for ScalarP {
     type Output = ScalarP;
@@ -77,6 +76,7 @@ impl<'a> Mul<&'a ScalarP> for ScalarP {
     }
 }
 
+/*
 impl<'a, 'b> Mul<&'b ScalarP> for &'a ScalarP {
     type Output = ScalarP;
 
@@ -84,6 +84,7 @@ impl<'a, 'b> Mul<&'b ScalarP> for &'a ScalarP {
         ScalarP::new((&other.0 * &self.0).into() )
     }
 }
+*/
 
 //TODO add mul u32
 
