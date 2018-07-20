@@ -7,7 +7,7 @@ use rand::distributions::Distribution;
 use rand::distributions::Standard;
 use rand::Rng;
 use rug::Integer;
-use scalar::integer_from_bytes;
+use util::rug::integer_from_bytes;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct ScalarP(pub Integer);

@@ -33,6 +33,7 @@ use criterion::Fun;
 use criterion::Bencher;
 use rug::Integer;
 use rug::Assign;
+use schnorr_edu::util::rug::integer_from_bytes;
 
 
 

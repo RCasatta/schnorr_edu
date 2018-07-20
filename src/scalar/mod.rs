@@ -5,9 +5,7 @@ use rug::Integer;
 pub use self::scalar_n::ScalarN;
 pub use self::scalar_p::ScalarP;
 use data_encoding::HEXLOWER;
-use rug::Assign;
-use context::CONTEXT;
-use std::ops::Rem;
+use util::rug::integer_from_bytes;
 
 pub mod scalar_n;
 pub mod scalar_p;
@@ -59,64 +57,24 @@ pub fn vec_to_32_bytes(val : &Vec<u8>) -> [u8;32] {
     result
 }
 
-pub fn integer_from_bytes(val : &[u8]) -> Integer {
-    Integer::from_str_radix(&HEXLOWER.encode(val), 16).unwrap()
-}
-
-pub fn mul_and_rem( a256: &Integer, b256:&Integer, buffer512:&mut Integer) -> Integer {
-    let incomplete = a256 * b256;
-    buffer512.assign(incomplete);
-    let borrowed_buffer :&Integer = &buffer512;
-    let incomplete = borrowed_buffer.rem(&CONTEXT.p.0);
-    //let incomplete = buffer512.r.+rem(  );
-    let mut result= Integer::with_capacity(256);
-    result.assign(incomplete);
-
-    buffer512.clone()
-}
 
 #[cfg(test)]
 mod tests {
     use apint::ApInt;
     use rand::thread_rng;
     use rand::Rng;
-    use num_bigint::BigUint;
-    use rug::Integer;
-    use num_traits::Num;
 
     #[test]
     fn test_apint() {
         let mut rng = thread_rng();
         let val : u64 = rng.gen();
         let _apint = ApInt::from_u64(val);
+
         //println!("{}",apint.as_string_with_radix(Radix::new(10).unwrap()));
         //let biguint = BigUint::from(val);
         //println!("{:?}",biguint);
 
     }
 
-    #[test]
-    fn test_rug() {
-        let mut rng = thread_rng();
-        let val : u64 = rng.gen();
-        let integer = Integer::from(val);
 
-        assert_eq!(val, integer.to_u64().unwrap());
-
-        let string = integer.to_string_radix(10);
-        assert_eq!(format!("{}", val), string);
-
-        let result = BigUint::from_str_radix(&string, 10).unwrap();
-        assert_eq!(format!("{}", result), string);
-
-
-        let mut a = Integer::from(10);
-        let b = Integer::from(120);
-        a += &b;
-
-        //integer.assign(a);
-        assert_eq!(a, 130);
-
-
-    }
 }

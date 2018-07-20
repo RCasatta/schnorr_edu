@@ -13,7 +13,7 @@ use point::jacobian_point::jacobian_point_mul;
 use point::jacobian_point::jacobian_point_add;
 use point::jacobian_point::generator_mul;
 use point::jacobian_point::JacobianPoint;
-use scalar::integer_from_bytes;
+use util::rug::integer_from_bytes;
 use rug::Integer;
 
 /// The following functions are less efficient and kept here for reference to be run by benchmarks

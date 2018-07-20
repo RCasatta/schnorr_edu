@@ -2,7 +2,7 @@ use context::CONTEXT;
 use std::fmt;
 use scalar::ScalarN;
 use scalar::ScalarP;
-use scalar::integer_from_bytes;
+use util::rug::integer_from_bytes;
 
 #[allow(non_snake_case)]
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]

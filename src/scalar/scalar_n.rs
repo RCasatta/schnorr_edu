@@ -9,7 +9,7 @@ use std::fmt;
 use std::ops::SubAssign;
 use std::ops::DivAssign;
 use std::borrow::Borrow;
-use scalar::integer_from_bytes;
+use util::rug::integer_from_bytes;
 use rug::Integer;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -166,7 +166,7 @@ mod tests {
         //println!("{:?}", );
         let expected = [1i8,0,0,-1];
         let naf = n.clone().to_wnaf(2);
-        println!("{:?}", naf);
+        //println!("{:?}", naf);
         assert_eq!(expected.to_vec(), naf);
 
         assert_eq!(n , ScalarN::from_naf(naf));

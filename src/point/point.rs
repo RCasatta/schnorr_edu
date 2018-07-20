@@ -6,7 +6,7 @@ use scalar::ScalarP;
 use point::JacobianPoint;
 use std::borrow::Borrow;
 use rug::Integer;
-use scalar::integer_from_bytes;
+use util::rug::integer_from_bytes;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Point {

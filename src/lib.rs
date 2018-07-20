@@ -29,7 +29,7 @@ use rand::thread_rng;
 use rand::Rng;
 use std::borrow::Borrow;
 use rug::Integer;
-use scalar::integer_from_bytes;
+use util::rug::integer_from_bytes;
 
 type Msg = [u8;32];
 

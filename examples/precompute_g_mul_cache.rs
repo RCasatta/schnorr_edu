@@ -5,7 +5,6 @@ extern crate num_traits;
 extern crate num_integer;
 extern crate rug;
 
-use num_bigint::BigUint;
 use schnorr_edu::scalar::ScalarN;
 use std::fs::File;
 use std::io::Write;

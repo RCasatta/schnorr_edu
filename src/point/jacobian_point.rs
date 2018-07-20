@@ -9,7 +9,6 @@ use std::borrow::Borrow;
 use rug::Integer;
 use num_bigint::BigUint;
 use num_traits::Num;
-use scalar::mul_and_rem;
 
 // Very bad defining Eq like this since two equal Jacobian Point could have different coordinates
 // however it's useful for now and used only in the HashMap where values are normalized
@@ -130,51 +129,8 @@ pub fn jacobian_point_double(p : &JacobianPoint) -> Option<JacobianPoint> {
     Some(JacobianPoint{x,y,z})
 }
 
+
 pub fn mixed_point_add(p1 : Option<&JacobianPoint>, p2 : Option<&Point>) -> Option<JacobianPoint> {
-    match (p1,p2) {
-        (None, None) => None,
-        (Some(p1), None) => Some(p1.clone()),
-        (None, Some(p2)) => Some(JacobianPoint::from( p2.clone())),
-        (Some(p1), Some(p2)) => {
-            let mut buffer512 = Integer::with_capacity(512);
-
-            let p1_z_pow2 = mul_and_rem( &p1.z.0, &p1.z.0, &mut buffer512);
-            let p1_z_pow3 = mul_and_rem( &p1_z_pow2, &p1.z.0, &mut buffer512);
-
-            let u1 = &p1.x.0;
-            let u2 = mul_and_rem( &p2.x.0, &p1_z_pow2, &mut buffer512);
-
-            let s1 = &p1.y.0;
-            let s2 = mul_and_rem( &p2.y.0, &p1_z_pow3, &mut buffer512);
-
-            if *u1==u2 {
-                if *s1==s2 {
-                    return jacobian_point_double(p1);
-                } else {
-                    return None;
-                }
-            }
-            let h = u2.sub(u1); // TODO
-            let h_pow2 = mul_and_rem(&h,&h, &mut buffer512);
-            let h_pow3 = mul_and_rem( &h_pow2,&h , &mut buffer512);
-            let r = s2.sub(s1); // TODO
-            let r_pow2 = mul_and_rem( &r, &r, &mut buffer512);
-            let two_u1 = mul_and_rem( &CONTEXT.two.0, &u1, &mut buffer512);
-            let two_u1_h_pow2 = (two_u1 * &h_pow2) % &CONTEXT.p.0;
-
-            let r_pow2_sub_h_pow3 = r_pow2.sub(&h_pow3); // TODO
-            let x3 = r_pow2_sub_h_pow3.sub(two_u1_h_pow2);
-
-            let y3 = r.mul( (u1*h_pow2 ).sub(&x3) )  // TODO
-                .sub( s1.mul(h_pow3) );
-
-            let z3 = h.mul(&p1.z.0);
-            Some(JacobianPoint{x:ScalarP(x3),y:ScalarP(y3),z:ScalarP(z3)})
-        }
-    }
-}
-
-pub fn mixed_point_add_orig(p1 : Option<&JacobianPoint>, p2 : Option<&Point>) -> Option<JacobianPoint> {
     match (p1,p2) {
         (None, None) => None,
         (Some(p1), None) => Some(p1.clone()),
