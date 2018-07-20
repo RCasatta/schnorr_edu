@@ -32,6 +32,9 @@ use apint::UInt;
 use criterion::Fun;
 use criterion::Bencher;
 use rug::Integer;
+use rug::Assign;
+
+
 
 #[derive(Debug)]
 struct Inputs {
@@ -54,6 +57,7 @@ fn benchmark_int_libraries(c: &mut Criterion) {
         rng.fill_bytes(&mut a);
         biguints.push( BigUint::from_bytes_be(&a) );
     }
+
 
     let mut rugs = Vec::new();
     for _ in 0..total {
@@ -79,10 +83,12 @@ fn benchmark_int_libraries(c: &mut Criterion) {
         criterion::black_box(result);
     }));
 
-    let fun_rugs = Fun::new("Rugs",  |b : &mut Bencher, inputs : &Inputs| b.iter(|| {
+    let fun_rugs = Fun::new("Rugs", move |b : &mut Bencher, inputs : &Inputs| b.iter(|| {
+        let mut result = Integer::with_capacity(512);
         let a =   thread_rng().choose(&inputs.rugs).unwrap();
         let b =   thread_rng().choose(&inputs.rugs).unwrap();
-        let result:Integer = a.mul(b);
+        let incomplete_result = a.mul(b);
+        result.assign(incomplete_result);
         criterion::black_box(result);
     }));
 
@@ -91,6 +97,10 @@ fn benchmark_int_libraries(c: &mut Criterion) {
     c.bench_functions("256 bit mul", functions, inputs);
 }
 
+
+fn benchmark_rugs(c: &mut Criterion) {
+
+}
 
 fn benchmark_biguint(c: &mut Criterion) {
     let mut rng = thread_rng();
