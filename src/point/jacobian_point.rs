@@ -121,12 +121,12 @@ pub fn jacobian_point_double(p : &JacobianPoint) -> Option<JacobianPoint> {
     let p_x_pow2 = p.x.clone().mul(&p.x);
     let p_y_pow2 = p.y.clone().mul(&p.y);
     let p_y_pow4 = p_y_pow2.clone().mul(&p_y_pow2);
-    let s = CONTEXT.four.clone().mul(&p.x).mul( &p_y_pow2 );
-    let m = CONTEXT.three.clone().mul( &p_x_pow2);
+    let s = p_y_pow2.mul(&p.x).mul( &CONTEXT.four );
+    let m = p_x_pow2.mul(&CONTEXT.three);
     let x = m.clone().mul(&m).sub( &s.clone()
         .mul(&CONTEXT.two));
-    let y = m.clone().mul( &s.sub(&x) ).sub( &CONTEXT.eight.clone()
-        .mul(&p_y_pow4));
+    let y = m.mul( s.sub(&x).borrow() )
+        .sub( p_y_pow4.mul(&CONTEXT.eight).borrow());
     let z = CONTEXT.two.clone().mul(&p.y).mul(&p.z);
     Some(JacobianPoint{x,y,z})
 }
@@ -197,8 +197,8 @@ pub fn jacobian_point_add(p1 : Option<&JacobianPoint>, p2 : Option<&JacobianPoin
             let u1 = p1.x.clone().mul(&p2_z_pow2);
             let u2 = p2.x.clone().mul(&p1_z_pow2);
 
-            let s1 = p1.y.clone().mul(&p2_z_pow2.mul(&p2.z));
-            let s2 = p2.y.clone().mul(&p1_z_pow2.mul(&p1.z));
+            let s1 = p2_z_pow2.mul(&p2.z).mul( &p1.y);
+            let s2 = p1_z_pow2.mul( &p2.y).mul(&p1.z);
 
             if u1==u2 {
                 if s1==s2 {
@@ -215,8 +215,8 @@ pub fn jacobian_point_add(p1 : Option<&JacobianPoint>, p2 : Option<&JacobianPoin
             let x3 = r_pow2
                 .sub( &h_pow3 )
                 .sub( &u1.clone().mul(&CONTEXT.two).mul(&h_pow2 ) );
-            let y3 = r.mul( &u1.mul(&h_pow2 ).sub(&x3) )
-                .sub(&s1.mul(&h_pow3));
+            let y3 = r.mul( u1.mul(&h_pow2 ).sub(&x3).borrow() )
+                .sub(s1.mul(&h_pow3).borrow() );
             let z3 = h.mul(&p1.z).mul(&p2.z);
             Some(JacobianPoint{x:x3,y:y3,z:z3})
         }

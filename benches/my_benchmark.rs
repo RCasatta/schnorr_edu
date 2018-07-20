@@ -34,7 +34,11 @@ use criterion::Bencher;
 use rug::Integer;
 use rug::Assign;
 use schnorr_edu::util::rug::integer_from_bytes;
-
+use apint::ApInt;
+use apint::BitWidth;
+use schnorr_edu::util::apint::mixed_point_add_apint;
+use schnorr_edu::util::apint::PointApInt;
+use schnorr_edu::util::apint::JacobianPointApInt;
 
 
 #[derive(Debug)]
@@ -400,6 +404,35 @@ fn benchmark_point(c: &mut Criterion) {
             let point = mixed_point_add(Some(b),Some(a));
             criterion::black_box(point);
         }));
+
+
+    let mut j_points_apint = Vec::new();
+    let mut a_points_apint = Vec::new();
+
+    let total = 200usize;
+    for _ in 0..total {
+        j_points_apint.push(JacobianPointApInt{
+            x: ApInt::random_with_width(BitWidth::new(256).unwrap()),
+            y: ApInt::random_with_width(BitWidth::new(256).unwrap()),
+            z: ApInt::random_with_width(BitWidth::new(256).unwrap()),
+        });
+
+        a_points_apint.push(PointApInt{
+            x: ApInt::random_with_width(BitWidth::new(256).unwrap()),
+            y: ApInt::random_with_width(BitWidth::new(256).unwrap()),
+        });
+    }
+
+
+    /*
+    c.bench_function("EC mixed Point2 adding",move |b|
+        b.iter(|| {
+            let a = thread_rng().choose(&a_points_apint).unwrap();
+            let b = thread_rng().choose(&j_points_apint).unwrap();
+            let point = mixed_point_add_apint(Some(b),Some(a));
+            criterion::black_box(point);
+        }));
+    */
 
 
     let points = points_orig.clone();
