@@ -39,6 +39,7 @@ use apint::BitWidth;
 use schnorr_edu::util::apint::mixed_point_add_apint;
 use schnorr_edu::util::apint::PointApInt;
 use schnorr_edu::util::apint::JacobianPointApInt;
+use secp256k1::key::PublicKey;
 
 
 #[derive(Debug)]
@@ -349,6 +350,33 @@ fn benchmark_sign(c: &mut Criterion) {
             let message = Message::from_slice(&msg[..]).unwrap() ;
             let signature : secp256k1::Signature = secp.sign(&message, &sk).unwrap();
             criterion::black_box(signature);
+        }));
+
+    let mut rng = rand::thread_rng();
+    let secp = Secp256k1::new();
+    let mut msg = [0u8;32];
+    let mut msgs = Vec::new();
+    let mut signatures = Vec::new();
+    let mut pks = Vec::new();
+    for _ in 0..300 {
+        rng.fill_bytes(&mut msg);
+        let scalar_key : ScalarN = rng.gen();
+        let sk = SecretKey::from_slice(&secp, &scalar_key.to_32_bytes()).unwrap();
+        let pk = PublicKey::from_secret_key(&secp,&sk).unwrap();
+        let message = Message::from_slice(&msg[..]).unwrap() ;
+        let signature  = secp.sign_schnorr(&message, &sk).unwrap();
+        msgs.push(message);
+        signatures.push(signature);
+        pks.push(pk);
+    }
+    c.bench_function("Schnorr libsecp verify",move |b|
+        b.iter(|| {
+            let i:usize = thread_rng().gen_range(0,300);
+
+            let r = secp.verify_schnorr(&msgs[i], &signatures[i], &pks[i]);
+            assert!(r.is_ok());
+            criterion::black_box(r);
+
         }));
 }
 
