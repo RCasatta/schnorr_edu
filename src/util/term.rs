@@ -1,5 +1,5 @@
-use scalar::ScalarN;
 use point::JacobianPoint;
+use scalar::ScalarN;
 use std::cmp::Ordering;
 
 #[derive(Debug)]
@@ -7,7 +7,6 @@ pub struct Term {
     pub coeff: ScalarN,
     pub point: JacobianPoint,
 }
-
 
 impl Ord for Term {
     fn cmp(&self, other: &Term) -> Ordering {
@@ -31,12 +30,12 @@ impl Eq for Term {}
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BinaryHeap;
-    use scalar::ScalarN;
-    use util::term::Term;
     use context::CONTEXT;
-    use std::ops::Add;
     use rug::Integer;
+    use scalar::ScalarN;
+    use std::collections::BinaryHeap;
+    use std::ops::Add;
+    use util::term::Term;
 
     #[test]
     fn test_heap() {
@@ -45,15 +44,25 @@ mod tests {
         let two = one.clone().add(one.clone());
         let three = two.clone().add(one.clone());
         let five = two.clone().add(three.clone());
-        let a = Term {coeff: one.clone(), point: CONTEXT.G_jacobian.clone() };
+        let a = Term {
+            coeff: one.clone(),
+            point: CONTEXT.G_jacobian.clone(),
+        };
         heap.push(a);
-        let a = Term {coeff: two, point: CONTEXT.G_jacobian.clone() };
+        let a = Term {
+            coeff: two,
+            point: CONTEXT.G_jacobian.clone(),
+        };
         heap.push(a);
-        let a = Term {coeff: five, point: CONTEXT.G_jacobian.clone() };
+        let a = Term {
+            coeff: five,
+            point: CONTEXT.G_jacobian.clone(),
+        };
         heap.push(a);
-        let a = Term {coeff: three, point: CONTEXT.G_jacobian.clone() };
+        let a = Term {
+            coeff: three,
+            point: CONTEXT.G_jacobian.clone(),
+        };
         heap.push(a);
-
     }
 }
-

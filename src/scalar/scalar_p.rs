@@ -1,11 +1,11 @@
-use std::ops::{Sub,Add,Rem,Mul,Div};
-use context::CONTEXT;
 use super::to_32_bytes;
-use std::fmt;
+use context::CONTEXT;
 use rand::distributions::Distribution;
 use rand::distributions::Standard;
 use rand::Rng;
 use rug::Integer;
+use std::fmt;
+use std::ops::{Add, Div, Mul, Rem, Sub};
 use util::rug::integer_from_bytes;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -20,8 +20,8 @@ impl fmt::Display for ScalarP {
 impl ScalarP {
     pub fn new(val: Integer) -> Self {
         match val < CONTEXT.p.0 {
-            true  => ScalarP(val),
-            false => ScalarP(val.rem(&CONTEXT.p.0)),   // TODO not sure if panic here
+            true => ScalarP(val),
+            false => ScalarP(val.rem(&CONTEXT.p.0)), // TODO not sure if panic here
         }
     }
     pub fn from_bytes(bytes: &[u8]) -> Self {
@@ -37,19 +37,22 @@ impl ScalarP {
         ScalarP(self.0.clone().pow_mod(&n.0, &CONTEXT.p.0).unwrap())
     }
     pub fn inv(&self) -> Self {
-        ScalarP(self.0.clone().pow_mod(&CONTEXT.p_sub2.0, &CONTEXT.p.0).unwrap())
+        ScalarP(
+            self.0
+                .clone()
+                .pow_mod(&CONTEXT.p_sub2.0, &CONTEXT.p.0)
+                .unwrap(),
+        )
     }
 
     pub fn jacobi(&self) -> bool {
         self.pow(&CONTEXT.p_sub1_div2).0 == 1
     }
-
 }
 impl<'a> Sub<&'a ScalarP> for ScalarP {
     type Output = ScalarP;
 
     fn sub(self, other: &ScalarP) -> ScalarP {
-
         let value = if self.0 > other.0 {
             self.0.sub(&other.0)
         } else {
@@ -60,19 +63,18 @@ impl<'a> Sub<&'a ScalarP> for ScalarP {
     }
 }
 
-
 impl<'a> Add<&'a ScalarP> for ScalarP {
     type Output = ScalarP;
 
     fn add(self, other: &ScalarP) -> ScalarP {
-        ScalarP::new(self.0.add(&other.0) )
+        ScalarP::new(self.0.add(&other.0))
     }
 }
 impl<'a> Mul<&'a ScalarP> for ScalarP {
     type Output = ScalarP;
 
     fn mul(self, other: &ScalarP) -> ScalarP {
-        ScalarP::new(self.0.mul(&other.0) )
+        ScalarP::new(self.0.mul(&other.0))
     }
 }
 
@@ -92,20 +94,20 @@ impl<'a> Rem<&'a ScalarP> for ScalarP {
     type Output = ScalarP;
 
     fn rem(self, other: &ScalarP) -> ScalarP {
-        ScalarP(self.0.rem(&other.0) )
+        ScalarP(self.0.rem(&other.0))
     }
 }
 impl<'a> Div<&'a ScalarP> for ScalarP {
     type Output = ScalarP;
 
     fn div(self, other: &ScalarP) -> ScalarP {
-        ScalarP::new(self.0.div(&other.0) )
+        ScalarP::new(self.0.div(&other.0))
     }
 }
 
 impl Distribution<ScalarP> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> ScalarP {
-        let mut bytes = [0u8;32];
+        let mut bytes = [0u8; 32];
         loop {
             rng.fill_bytes(&mut bytes);
             let be = integer_from_bytes(&bytes);
@@ -115,8 +117,6 @@ impl Distribution<ScalarP> for Standard {
         }
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {
@@ -132,7 +132,7 @@ mod tests {
     fn test_borrow() {
         let a = Integer::from(1);
         let b = Integer::from(1);
-        let c : Integer = (&a + &b).into();
+        let c: Integer = (&a + &b).into();
 
         assert_eq!(c, Integer::from(2u32));
     }

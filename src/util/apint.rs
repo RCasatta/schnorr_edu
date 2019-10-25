@@ -16,15 +16,17 @@ pub struct PointApInt {
     pub y: ApInt,
 }
 
-pub fn mixed_point_add_apint(p1 : Option<&JacobianPointApInt>, p2 : Option<&PointApInt>) -> Option<JacobianPointApInt> {
-    match (p1,p2) {
+pub fn mixed_point_add_apint(
+    p1: Option<&JacobianPointApInt>,
+    p2: Option<&PointApInt>,
+) -> Option<JacobianPointApInt> {
+    match (p1, p2) {
         (None, None) => None,
-        (Some(p1), None) => None,
-        (None, Some(p2)) => None,
+        (Some(_p1), None) => None,
+        (None, Some(_p2)) => None,
         (Some(p1), Some(p2)) => {
-
-            println!("{:?} ", p1.z.width() );
-            println!("{:?} ", p1.z.clone().width() );
+            println!("{:?} ", p1.z.width());
+            println!("{:?} ", p1.z.clone().width());
             let p1_z_pow2 = p1.z.clone().mul(&p1.z);
 
             let u1 = &p1.x;
@@ -33,9 +35,9 @@ pub fn mixed_point_add_apint(p1 : Option<&JacobianPointApInt>, p2 : Option<&Poin
             let s1 = &p1.y;
             let s2 = p1_z_pow2.mul(&p1.z).mul(&p2.y);
 
-            if *u1==u2 {
-                if *s1==s2 {
-                    return Some(p1.to_owned());  //TODO
+            if *u1 == u2 {
+                if *s1 == s2 {
+                    return Some(p1.to_owned()); //TODO
                 } else {
                     return None;
                 }
@@ -49,23 +51,26 @@ pub fn mixed_point_add_apint(p1 : Option<&JacobianPointApInt>, p2 : Option<&Poin
             let r_pow2 = r.clone().mul(&r);
 
             let x3 = r_pow2
-                .sub( &h_pow3 )
-                .sub( &ApInt::from_u64(2).mul(&u1).mul(&h_pow2 ) );
+                .sub(&h_pow3)
+                .sub(&ApInt::from_u64(2).mul(&u1).mul(&h_pow2));
 
-            let u1_mul_h_pow2= h_pow2.mul(&u1 );
+            let u1_mul_h_pow2 = h_pow2.mul(&u1);
 
-            let y3 = r.mul( &u1_mul_h_pow2.sub(&x3) )
-                .sub( &h_pow3.mul(&s1) );
+            let y3 = r.mul(&u1_mul_h_pow2.sub(&x3)).sub(&h_pow3.mul(&s1));
 
             let z3 = h.mul(&p1.z);
-            Some(JacobianPointApInt{x:x3,y:y3,z:z3})
+            Some(JacobianPointApInt {
+                x: x3,
+                y: y3,
+                z: z3,
+            })
         }
     }
 }
 
-
+#[allow(dead_code)]
 fn apint_to_bytes_le(mut apint: ApInt) -> Vec<u8> {
-    let mut bytes = Vec::with_capacity(apint.width().to_usize()/8 );
+    let mut bytes = Vec::with_capacity(apint.width().to_usize() / 8);
     loop {
         if apint.is_zero() {
             break;
@@ -76,25 +81,22 @@ fn apint_to_bytes_le(mut apint: ApInt) -> Vec<u8> {
     bytes
 }
 
-
-
 #[cfg(test)]
 mod tests {
+    use super::*;
     use apint::ApInt;
+    use apint::BitWidth;
     use num_bigint::BigUint;
+    use num_traits::FromPrimitive;
     use rand::thread_rng;
     use rand::Rng;
-    use num_traits::FromPrimitive;
-    use super::*;
-    use apint::BitWidth;
 
     #[test]
     fn test_apint() {
-
         let apint = ApInt::from_u64(1000);
         let biguint = BigUint::from_u32(1000).unwrap();
 
-        assert_eq!(biguint.to_bytes_le(), apint_to_bytes_le(apint.clone()) );
+        assert_eq!(biguint.to_bytes_le(), apint_to_bytes_le(apint.clone()));
 
         let x = apint.sub(&ApInt::from_u64(1000));
         assert!(x.is_zero());
@@ -105,29 +107,28 @@ mod tests {
         let apint = apint + &b;
         //println!("{:?}", apint);
 
+        /*
+                let rnd =  ApInt::from_u64( thread_rng().gen() );
 
-/*
-        let rnd =  ApInt::from_u64( thread_rng().gen() );
+                b.assign(&rnd);
+                let apint = apint + &b;
+                println!("{:?}", apint);
+                let apint = apint * &b;
+                println!("{:?}", apint);
+                let apint = apint * &b;
+                println!("{:?}", apint);
 
-        b.assign(&rnd);
-        let apint = apint + &b;
-        println!("{:?}", apint);
-        let apint = apint * &b;
-        println!("{:?}", apint);
-        let apint = apint * &b;
-        println!("{:?}", apint);
+                let a = JacobianPointApInt{
+                    x: ApInt::random_with_width(BitWidth::new(256).unwrap()),
+                    y: ApInt::random_with_width(BitWidth::new(256).unwrap()),
+                    z: ApInt::random_with_width(BitWidth::new(256).unwrap()),
+                };
 
-        let a = JacobianPointApInt{
-            x: ApInt::random_with_width(BitWidth::new(256).unwrap()),
-            y: ApInt::random_with_width(BitWidth::new(256).unwrap()),
-            z: ApInt::random_with_width(BitWidth::new(256).unwrap()),
-        };
-
-        let b = PointApInt{
-            x: ApInt::random_with_width(BitWidth::new(256).unwrap()),
-            y: ApInt::random_with_width(BitWidth::new(256).unwrap()),
-        };
-*/
+                let b = PointApInt{
+                    x: ApInt::random_with_width(BitWidth::new(256).unwrap()),
+                    y: ApInt::random_with_width(BitWidth::new(256).unwrap()),
+                };
+        */
         //let option = mixed_point_add_apint(Some(&a), Some(&b) );
         //println!("flags: {:#018b}", 260);
 
@@ -142,8 +143,5 @@ mod tests {
         //println!("{}",apint.as_string_with_radix(Radix::new(10).unwrap()));
         //let biguint = BigUint::from(val);
         //println!("{:?}",biguint);
-
     }
-
-
 }

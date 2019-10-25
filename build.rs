@@ -10,9 +10,12 @@ fn main() {
     let dest_path = Path::new(&out_dir).join("hello.rs");
     let mut f = File::create(&dest_path).unwrap();
 
-    f.write_all(b"
+    f.write_all(
+        b"
         pub fn message() -> &'static str {
             \"Hello, World!\"
         }
-    ").unwrap();
+    ",
+    )
+    .unwrap();
 }

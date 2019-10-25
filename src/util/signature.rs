@@ -1,7 +1,7 @@
 use context::CONTEXT;
-use std::fmt;
 use scalar::ScalarN;
 use scalar::ScalarP;
+use std::fmt;
 use util::rug::integer_from_bytes;
 
 #[allow(non_snake_case)]
@@ -19,24 +19,24 @@ impl fmt::Display for Signature {
 
 #[allow(non_snake_case)]
 impl Signature {
-    pub fn new(Rx : ScalarP, s : ScalarN) -> Self {
-        Signature {Rx,s}
+    pub fn new(Rx: ScalarP, s: ScalarN) -> Self {
+        Signature { Rx, s }
     }
-    pub fn from_bytes(bytes : &[u8]) -> Self {
-        assert_eq!(bytes.len(),64);
+    pub fn from_bytes(bytes: &[u8]) -> Self {
+        assert_eq!(bytes.len(), 64);
         let Rx = integer_from_bytes(&bytes[..32]);
-        assert!( Rx < CONTEXT.p.0);
+        assert!(Rx < CONTEXT.p.0);
         let Rx = ScalarP(Rx);
-        let s = integer_from_bytes(&bytes[32..]) ;
-        assert!( s < CONTEXT.n.0);
+        let s = integer_from_bytes(&bytes[32..]);
+        assert!(s < CONTEXT.n.0);
         let s = ScalarN(s);
-        Signature {Rx,s}
+        Signature { Rx, s }
     }
 
     pub fn as_bytes(&self) -> Vec<u8> {
         let mut vec = Vec::with_capacity(64);
-        vec.extend(&self.Rx.to_32_bytes() );
-        vec.extend(&self.s.to_32_bytes() );
+        vec.extend(&self.Rx.to_32_bytes());
+        vec.extend(&self.s.to_32_bytes());
         vec
     }
 }

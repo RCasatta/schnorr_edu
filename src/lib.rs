@@ -1,43 +1,42 @@
 #[macro_use]
 extern crate lazy_static;
 
-extern crate num_bigint;
-extern crate num_traits;
-extern crate num_integer;
-extern crate data_encoding;
-extern crate rand;
-extern crate crypto;
 extern crate apint;
+extern crate crypto;
+extern crate data_encoding;
+extern crate num_bigint;
+extern crate num_integer;
+extern crate num_traits;
+extern crate rand;
 extern crate rug;
 
 pub mod context;
+pub mod old;
 pub mod point;
 pub mod scalar;
 pub mod util;
-pub mod old;
 
-use std::ops::{Mul,Sub,Add};
-use util::signature::Signature;
-use std::collections::BinaryHeap;
-use util::term::Term;
-use scalar::ScalarN;
-use scalar::concat_and_hash;
-use point::{generator_mul, jacobian_point_add};
-use point::{Point, JacobianPoint};
 use context::CONTEXT;
+use point::{generator_mul, jacobian_point_add};
+use point::{JacobianPoint, Point};
 use rand::thread_rng;
 use rand::Rng;
-use std::borrow::Borrow;
 use rug::Integer;
+use scalar::concat_and_hash;
+use scalar::ScalarN;
+use std::borrow::Borrow;
+use std::collections::BinaryHeap;
+use std::ops::{Add, Mul, Sub};
 use util::rug::integer_from_bytes;
+use util::signature::Signature;
+use util::term::Term;
 
-type Msg = [u8;32];
+type Msg = [u8; 32];
 
 // https://github.com/sipa/bips/blob/bip-schnorr/bip-schnorr.mediawiki
 
-
 #[allow(non_snake_case)]
-pub fn schnorr_sign(msg : &Msg, sec_key: &ScalarN) -> Signature {
+pub fn schnorr_sign(msg: &Msg, sec_key: &ScalarN) -> Signature {
     let sec_key_bytes = sec_key.to_32_bytes();
     let mut k = concat_and_hash(&sec_key_bytes, msg, &vec![]);
     let R_jacobian = generator_mul(&k).unwrap();
@@ -51,11 +50,11 @@ pub fn schnorr_sign(msg : &Msg, sec_key: &ScalarN) -> Signature {
     let e = concat_and_hash(&Rx, &dG.as_bytes(), msg);
     let s = k.add(e.mul(sec_key));
 
-    Signature::new(R.x,s)
+    Signature::new(R.x, s)
 }
 
 #[allow(non_snake_case)]
-pub fn schnorr_verify(msg : &Msg, pub_key: &Point, signature: &Signature) -> bool {
+pub fn schnorr_verify(msg: &Msg, pub_key: &Point, signature: &Signature) -> bool {
     if !pub_key.on_curve() {
         return false;
     }
@@ -81,7 +80,7 @@ pub fn schnorr_verify(msg : &Msg, pub_key: &Point, signature: &Signature) -> boo
     }
 
     // x(P) ≠ r can be implemented as x ≠ z^2r mod p.
-    let Rx = R.z.clone().mul(&R.z).mul(&signature.Rx );
+    let Rx = R.z.clone().mul(&R.z).mul(&signature.Rx);
 
     if R.x != Rx {
         return false;
@@ -90,15 +89,18 @@ pub fn schnorr_verify(msg : &Msg, pub_key: &Point, signature: &Signature) -> boo
     true
 }
 
-
 // https://www.deadalnix.me/2017/02/17/schnorr-signatures-for-not-so-dummies/
 #[allow(non_snake_case)]
-pub fn schnorr_batch_verify(messages : &Vec<Msg>, pub_keys:  &Vec<Point>, signatures:  &Vec<Signature>) -> bool {
+pub fn schnorr_batch_verify(
+    messages: &Vec<Msg>,
+    pub_keys: &Vec<Point>,
+    signatures: &Vec<Signature>,
+) -> bool {
     assert_eq!(messages.len(), pub_keys.len());
     assert_eq!(messages.len(), signatures.len());
-    let mut R_vec= Vec::new();
-    let mut a_vec= Vec::new();
-    let mut e_vec= Vec::new();
+    let mut R_vec = Vec::new();
+    let mut a_vec = Vec::new();
+    let mut e_vec = Vec::new();
     let mut rng = thread_rng();
     for i in 0..messages.len() {
         let msg = &messages[i];
@@ -109,20 +111,31 @@ pub fn schnorr_batch_verify(messages : &Vec<Msg>, pub_keys:  &Vec<Point>, signat
         }
         let e = concat_and_hash(&signature.Rx.to_32_bytes(), &P.as_bytes(), &msg[..]);
         e_vec.push(e);
-        let c = signature.Rx.borrow().pow(&CONTEXT.three).add(&CONTEXT.seven);
+        let c = signature
+            .Rx
+            .borrow()
+            .pow(&CONTEXT.three)
+            .add(&CONTEXT.seven);
         let y = c.pow(&CONTEXT.p_add1_div4);
         let y_pow2 = y.clone().mul(&y);
         if y_pow2 != c {
             return false;
         }
-        R_vec.push(  JacobianPoint::from(Point{x: signature.Rx.clone(), y} ));
-        let a = if i == 0 { ScalarN(Integer::from(1u32)) } else { rng.gen::<ScalarN>() };
+        R_vec.push(JacobianPoint::from(Point {
+            x: signature.Rx.clone(),
+            y,
+        }));
+        let a = if i == 0 {
+            ScalarN(Integer::from(1u32))
+        } else {
+            rng.gen::<ScalarN>()
+        };
         a_vec.push(a);
     }
 
     //Fail if (s1 + a2s2 + ... + ausu)G ≠ R1 + a2R2 + ... + auRu + e1P1 + (a2e2)P2 + ... + (aueu)Pu
-    let mut coeff= ScalarN(Integer::new());
-    let mut inner_product : Vec<Term> = Vec::new();
+    let mut coeff = ScalarN(Integer::new());
+    let mut inner_product: Vec<Term> = Vec::new();
     for i in 0..messages.len() {
         let signature = &signatures[i];
         let R = &R_vec[i];
@@ -130,44 +143,56 @@ pub fn schnorr_batch_verify(messages : &Vec<Msg>, pub_keys:  &Vec<Point>, signat
         let e = &e_vec[i];
         let P = &pub_keys[i];
 
-        coeff = coeff.add( a.to_owned().mul(&signature.s) );
-        inner_product.push(Term {coeff: a.to_owned(), point: R.to_owned() });
-        inner_product.push(Term {coeff: a.to_owned().mul(e), point: JacobianPoint::from( P.to_owned())  });
+        coeff = coeff.add(a.to_owned().mul(&signature.s));
+        inner_product.push(Term {
+            coeff: a.to_owned(),
+            point: R.to_owned(),
+        });
+        inner_product.push(Term {
+            coeff: a.to_owned().mul(e),
+            point: JacobianPoint::from(P.to_owned()),
+        });
     }
-    inner_product.push(Term{coeff: CONTEXT.n.clone().sub( &coeff), point: CONTEXT.G_jacobian.clone() });  // -sG
+    inner_product.push(Term {
+        coeff: CONTEXT.n.clone().sub(&coeff),
+        point: CONTEXT.G_jacobian.clone(),
+    }); // -sG
 
-    let mut inner_product : BinaryHeap<Term> = BinaryHeap::from(inner_product);
+    let mut inner_product: BinaryHeap<Term> = BinaryHeap::from(inner_product);
 
-    while inner_product.len()>1 {
+    while inner_product.len() > 1 {
         let t0 = inner_product.pop().unwrap();
         let t1 = inner_product.pop().unwrap();
         let option = jacobian_point_add(Some(&t0.point), Some(&t1.point));
         if option.is_none() && inner_product.len() == 0 {
             return true;
         }
-        inner_product.push(Term {coeff: t1.coeff.clone(), point: option.unwrap() });
+        inner_product.push(Term {
+            coeff: t1.coeff.clone(),
+            point: option.unwrap(),
+        });
         if t0.coeff != t1.coeff {
-            inner_product.push(Term {coeff: t0.coeff-&t1.coeff, point: t0.point });
+            inner_product.push(Term {
+                coeff: t0.coeff - &t1.coeff,
+                point: t0.point,
+            });
         }
     }
     return false;
 }
 
-
-
 #[cfg(test)]
 mod tests {
-    use rand::prelude::*;
     use super::*;
     use data_encoding::HEXUPPER;
-    use scalar::vec_to_32_bytes;
     use old;
-
+    use rand::prelude::*;
+    use scalar::vec_to_32_bytes;
 
     #[test]
     fn test_sign_and_jacobi_sign() {
         let sec_key = thread_rng().gen::<ScalarN>();
-        let msg = [0u8;32];
+        let msg = [0u8; 32];
         let sign1 = schnorr_sign(&msg, &sec_key);
         let sign2 = schnorr_sign(&msg, &sec_key);
         assert_eq!(sign1, sign2);
@@ -180,16 +205,17 @@ mod tests {
         let mut pub_keys = Vec::new();
         let mut signatures = Vec::new();
 
-        let mut msg = [0u8;32];
+        let mut msg = [0u8; 32];
 
         for i in 0..10 {
             rng.fill_bytes(&mut msg);
             let sec_key = rng.gen::<ScalarN>();
-            let pub_key : Point = generator_mul(&sec_key).unwrap().into();
+            let pub_key: Point = generator_mul(&sec_key).unwrap().into();
             let signature = schnorr_sign(&msg, &sec_key);
             let result = schnorr_verify(&msg, &pub_key, &signature);
             assert!(result);
-            if i==0 {  // too slow to do it every time
+            if i == 0 {
+                // too slow to do it every time
                 let result = old::schnorr_verify(&msg, &pub_key, &signature);
                 assert!(result);
             }
@@ -199,21 +225,30 @@ mod tests {
             signatures.push(signature);
         }
         assert!(schnorr_batch_verify(&messages, &pub_keys, &signatures));
-        assert!(old::schnorr_batch_verify(&messages[..2].to_vec(),
-                                          &pub_keys[..2].to_vec(),
-                                          &signatures[..2].to_vec()));
+        assert!(old::schnorr_batch_verify(
+            &messages[..2].to_vec(),
+            &pub_keys[..2].to_vec(),
+            &signatures[..2].to_vec()
+        ));
         messages.pop();
-        messages.push([0u8;32]);
+        messages.push([0u8; 32]);
         assert!(!schnorr_batch_verify(&messages, &pub_keys, &signatures));
     }
 
     #[test]
     fn test_bip_verify() {
-        fn test_vector_verify(public : &str, message : &str, signature : &str, result : bool) {
-            let pub_key = Point::from_bytes( &HEXUPPER.decode(public.as_bytes()).unwrap() ).unwrap();
-            let message_bytes = vec_to_32_bytes( &HEXUPPER.decode(message.as_bytes()).unwrap() );
+        fn test_vector_verify(public: &str, message: &str, signature: &str, result: bool) {
+            let pub_key = Point::from_bytes(&HEXUPPER.decode(public.as_bytes()).unwrap()).unwrap();
+            let message_bytes = vec_to_32_bytes(&HEXUPPER.decode(message.as_bytes()).unwrap());
             let signature_bytes = HEXUPPER.decode(signature.as_bytes()).unwrap();
-            assert_eq!(result, schnorr_verify(&message_bytes, &pub_key, &Signature::from_bytes( &signature_bytes)));
+            assert_eq!(
+                result,
+                schnorr_verify(
+                    &message_bytes,
+                    &pub_key,
+                    &Signature::from_bytes(&signature_bytes)
+                )
+            );
         }
         test_vector_verify(
             "03DEFDEA4CDB677750A420FEE807EACF21EB9898AE79B9768766E4FAA04A2D4A34",
@@ -254,14 +289,14 @@ mod tests {
 
     #[test]
     fn test_bip_sign() {
-        fn test_vector( private : &str, public : &str, message : &str, signature : &str) {
+        fn test_vector(private: &str, public: &str, message: &str, signature: &str) {
             let sec_key_bytes = vec_to_32_bytes(&HEXUPPER.decode(private.as_bytes()).unwrap());
             let sec_key = ScalarN::new(integer_from_bytes(&sec_key_bytes));
-            let pub_key : Point = generator_mul(&sec_key).unwrap().into();
-            assert_eq!(HEXUPPER.encode( &pub_key.as_bytes()[..]), public);
-            let message = vec_to_32_bytes( &HEXUPPER.decode(message.as_bytes()).unwrap() );
+            let pub_key: Point = generator_mul(&sec_key).unwrap().into();
+            assert_eq!(HEXUPPER.encode(&pub_key.as_bytes()[..]), public);
+            let message = vec_to_32_bytes(&HEXUPPER.decode(message.as_bytes()).unwrap());
 
-            let signature_check =  HEXUPPER.decode(signature.as_bytes()).unwrap();
+            let signature_check = HEXUPPER.decode(signature.as_bytes()).unwrap();
             let signature = schnorr_sign(&message, &sec_key);
             assert_eq!(signature_check, signature.as_bytes());
         }
