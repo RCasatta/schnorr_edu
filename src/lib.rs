@@ -18,7 +18,7 @@ pub mod util;
 
 use context::CONTEXT;
 use point::{generator_mul, jacobian_point_add};
-use point::{JacobianPoint, Point};
+use point::{JacobianPoint, Point, NormalizedPoint};
 use rand::thread_rng;
 use rand::Rng;
 use rug::Integer;
@@ -73,7 +73,8 @@ pub fn schnorr_sign(msg: &Msg, sec_key: &ScalarN) -> Signature {
 }
 
 #[allow(non_snake_case)]
-pub fn schnorr_verify(msg: &Msg, pub_key: &Point, signature: &Signature) -> bool {
+pub fn schnorr_verify(msg: &Msg, pub_key: &NormalizedPoint, signature: &Signature) -> bool {
+    let pub_key: Point = pub_key.into();
     println!("schnorr_verify(msg, pub_key, signature) with ({},{},{})", &HEXUPPER.encode(&msg[..]), &HEXUPPER.encode(&pub_key.as_bytes()), &HEXUPPER.encode(&signature.as_bytes()));
 
     if !pub_key.on_curve() {
@@ -228,9 +229,9 @@ mod tests {
     #[test]
     fn test_sign_and_verify() {
         let mut rng = thread_rng();
-        let mut messages = Vec::new();
+        /*let mut messages = Vec::new();
         let mut pub_keys = Vec::new();
-        let mut signatures = Vec::new();
+        let mut signatures = Vec::new();*/
 
         let mut msg = [0u8; 32];
 
@@ -240,7 +241,7 @@ mod tests {
             let sec_key = rng.gen::<ScalarN>();
             let pub_key: Point = generator_mul(&sec_key).unwrap().into();
             let signature = schnorr_sign(&msg, &sec_key);
-            let result = schnorr_verify(&msg, &Point::from_bytes(&pub_key.as_bytes()).unwrap(), &signature);
+            let result = schnorr_verify(&msg, &pub_key.into(), &signature);
             println!("result {}", result);
             assert!(result);
             /*
@@ -249,11 +250,12 @@ mod tests {
                 let result = old::schnorr_verify(&msg, &pub_key, &signature);
                 assert!(result);
             }
-            */
+
 
             messages.push(msg);
             pub_keys.push(pub_key);
             signatures.push(signature);
+            */
         }
         /*
         assert!(schnorr_batch_verify(&messages, &pub_keys, &signatures));
@@ -304,7 +306,7 @@ mod tests {
                 result,
                 schnorr_verify(
                     &message_bytes,
-                    &pub_key,
+                    &pub_key.into(),
                     &signature_result.unwrap()
                 )
             );

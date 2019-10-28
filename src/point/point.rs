@@ -13,6 +13,30 @@ pub struct Point {
     pub y: ScalarP,
 }
 
+pub struct NormalizedPoint {
+    pub x: ScalarP,
+}
+
+impl From<NormalizedPoint> for Point {
+    fn from(n: NormalizedPoint) -> Self {
+        Point::from_bytes(&n.x.to_32_bytes()).unwrap()
+    }
+}
+
+impl From<&NormalizedPoint> for Point {
+    fn from(n: &NormalizedPoint) -> Self {
+        Point::from_bytes(&n.x.to_32_bytes()).unwrap()
+    }
+}
+
+impl From<Point> for NormalizedPoint {
+    fn from(p: Point) -> Self {
+        NormalizedPoint{
+            x: p.x
+        }
+    }
+}
+
 impl fmt::Display for Point {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "({}, {})", self.x, self.y)
