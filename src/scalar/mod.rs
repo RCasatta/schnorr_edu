@@ -9,21 +9,63 @@ use util::rug::integer_from_bytes;
 pub mod scalar_n;
 pub mod scalar_p;
 
-pub fn sha256(input: &[u8]) -> Integer {
+pub fn sha256_BIPSchnorr(input: &[u8]) -> Integer {
+    tagged_sha256(b"BIPSchnorr", input)
+}
+
+pub fn sha256_BIPSchnorrDerive(input: &[u8]) -> Integer {
+    tagged_sha256(b"BIPSchnorrDerive", input)
+}
+
+pub fn tagged_sha256(tag :&[u8], input: &[u8]) -> Integer {
     let mut hashed = [0u8; 32];
     let mut hasher = Sha256::new();
+    let tag_hash = sha256(tag);
+    println!("tag_hash {}", &HEXLOWER.encode(&tag_hash));
+    hasher.input(&tag_hash);
+    hasher.input(&tag_hash);
     hasher.input(input);
     hasher.result(&mut hashed);
     integer_from_bytes(&hashed[..])
 }
+
+pub fn sha256(input: &[u8]) -> [u8; 32] {
+    let mut hashed = [0u8; 32];
+    let mut hasher = Sha256::new();
+    hasher.input(input);
+    hasher.result(&mut hashed);
+    hashed
+}
+pub fn sha256_int(input: &[u8]) -> Integer {
+    integer_from_bytes(&sha256(input))
+}
+
+pub fn concat_and_hash_BIPSchnorr(a: &[u8], b: &[u8], c: &[u8]) -> ScalarN {
+    let mut vec = Vec::with_capacity(a.len() + b.len() + c.len());
+    vec.extend(a);
+    vec.extend(b);
+    vec.extend(c);
+    ScalarN::new(sha256_BIPSchnorr(&vec))
+}
+
+
+pub fn concat_and_hash_BIPSchnorrDerive(a: &[u8], b: &[u8], c: &[u8]) -> ScalarN {
+    let mut vec = Vec::with_capacity(a.len() + b.len() + c.len());
+    vec.extend(a);
+    vec.extend(b);
+    vec.extend(c);
+    ScalarN::new(sha256_BIPSchnorrDerive(&vec))
+}
+
 
 pub fn concat_and_hash(a: &[u8], b: &[u8], c: &[u8]) -> ScalarN {
     let mut vec = Vec::with_capacity(a.len() + b.len() + c.len());
     vec.extend(a);
     vec.extend(b);
     vec.extend(c);
-    ScalarN::new(sha256(&vec))
+    ScalarN::new(sha256_int(&vec))
 }
+
 
 fn to_32_bytes(val: &Integer) -> [u8; 32] {
     let mut string = val.to_string_radix(16);

@@ -22,15 +22,19 @@ impl Signature {
     pub fn new(Rx: ScalarP, s: ScalarN) -> Self {
         Signature { Rx, s }
     }
-    pub fn from_bytes(bytes: &[u8]) -> Self {
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self,()> {
         assert_eq!(bytes.len(), 64);
         let Rx = integer_from_bytes(&bytes[..32]);
-        assert!(Rx < CONTEXT.p.0);
+        if Rx >= CONTEXT.p.0 {
+            return Err(());
+        }
         let Rx = ScalarP(Rx);
         let s = integer_from_bytes(&bytes[32..]);
-        assert!(s < CONTEXT.n.0);
+        if s >= CONTEXT.n.0 {
+            return Err(());
+        }
         let s = ScalarN(s);
-        Signature { Rx, s }
+        Ok(Signature { Rx, s })
     }
 
     pub fn as_bytes(&self) -> Vec<u8> {

@@ -63,7 +63,7 @@ impl JacobianPoint {
     pub fn normalize(self) -> JacobianPoint {
         JacobianPoint::from(Point::from(self))
     }
-    pub fn as_bytes(self) -> [u8; 33] {
+    pub fn as_bytes(self) -> [u8; 32] {
         Point::from(self).as_bytes()
     }
 
@@ -99,8 +99,10 @@ impl JacobianPoint {
         }
     }
 
-    pub fn jacobi(&self) -> bool {
-        self.y.clone().mul(&self.z).0 == 1
+    pub fn is_square(&self) -> bool {
+        //TODO not efficient
+        let p: Point = self.clone().into();
+        p.y.is_square()
     }
 }
 

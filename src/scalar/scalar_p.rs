@@ -45,9 +45,10 @@ impl ScalarP {
         )
     }
 
-    pub fn jacobi(&self) -> bool {
+    pub fn is_square(&self) -> bool {
         self.pow(&CONTEXT.p_sub1_div2).0 == 1
     }
+
 }
 impl<'a> Sub<&'a ScalarP> for ScalarP {
     type Output = ScalarP;

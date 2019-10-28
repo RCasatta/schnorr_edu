@@ -51,16 +51,8 @@ impl Point {
         sub % &CONTEXT.p == CONTEXT.seven
     }
 
-    pub fn as_bytes(&self) -> [u8; 33] {
-        let mut res = [0u8; 33];
-        if self.y.0.is_even() {
-            res[0] = 0x02;
-        } else {
-            res[0] = 0x03;
-        }
-        let bytes = self.x.to_32_bytes();
-        res[1..].copy_from_slice(&bytes[..]);
-        res
+    pub fn as_bytes(&self) -> [u8; 32] {
+        self.x.to_32_bytes()
     }
 
     pub fn as_uncompressed_bytes(&self) -> [u8; 64] {
@@ -71,17 +63,15 @@ impl Point {
     }
 
     pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
-        if bytes.len() != 33 {
+        if bytes.len() != 32 {
             return None;
         }
-        let x = ScalarP::new(integer_from_bytes(&bytes[1..]));
+        let x = ScalarP::new(integer_from_bytes(&bytes[..]));
         let y2 = x.pow(&CONTEXT.three).add(&CONTEXT.seven);
 
         // in secp256k1 sqrt is equal to pow( (p-1)/4 )
         let mut y = y2.pow(&CONTEXT.p_add1_div4);
-        if (bytes[0] == 0x02 && y.0.is_odd()) || (bytes[0] == 0x03 && y.0.is_even()) {
-            y = CONTEXT.p.clone().sub(&y);
-        }
+
         Some(Point { x, y })
     }
 
@@ -258,7 +248,7 @@ mod tests {
         let x = HEXLOWER.encode(&x_bytes[..]);
         assert_eq!(
             x,
-            "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+            "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
         );
 
         assert!(CONTEXT.G.on_curve());
