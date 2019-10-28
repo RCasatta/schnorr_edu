@@ -37,6 +37,14 @@ impl From<Point> for NormalizedPoint {
     }
 }
 
+impl From<&Point> for NormalizedPoint {
+    fn from(p: &Point) -> Self {
+        NormalizedPoint{
+            x: p.x.clone()
+        }
+    }
+}
+
 impl fmt::Display for Point {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "({}, {})", self.x, self.y)
@@ -94,7 +102,7 @@ impl Point {
         let y2 = x.pow(&CONTEXT.three).add(&CONTEXT.seven);
 
         // in secp256k1 sqrt is equal to pow( (p-1)/4 )
-        let mut y = y2.pow(&CONTEXT.p_add1_div4);
+        let y = y2.pow(&CONTEXT.p_add1_div4);
 
         Some(Point { x, y })
     }

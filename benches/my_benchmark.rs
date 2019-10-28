@@ -271,7 +271,7 @@ fn benchmark_verify(c: &mut Criterion) {
     c.bench_function("Schnorr verify", move |b| {
         b.iter(|| {
             let i = thread_rng().gen_range(0usize, precomputed_signatures);
-            let result = schnorr_verify(&msg, &pub_keys[i], &signatures[i]);
+            let result = schnorr_verify(&msg, &NormalizedPoint::from(&pub_keys[i]) , &signatures[i]);
             criterion::black_box(result);
             assert!(result);
         })
@@ -319,7 +319,7 @@ fn benchmark_batch_verify(c: &mut Criterion) {
     } ));
     */
 
-    let signatures = signatures_orig.clone();
+    /*let signatures = signatures_orig.clone();
     let pub_keys = pub_keys_orig.clone();
     let messages = messages_orig.clone();
     let plot_config = PlotConfiguration::default().summary_scale(AxisScale::Logarithmic);
@@ -341,7 +341,7 @@ fn benchmark_batch_verify(c: &mut Criterion) {
     .throughput(|size| Throughput::Elements(**size as u32))
     .plot_config(plot_config);
 
-    c.bench("Schnorr Batch Ver", benchmark);
+    c.bench("Schnorr Batch Ver", benchmark);*/
 
     /*
     c.bench_function_over_inputs("Schnorr Batch Ver",move |b, &&size| b.iter(|| {

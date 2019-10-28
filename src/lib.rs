@@ -32,7 +32,6 @@ use std::ops::{Add, Mul, Sub};
 use util::rug::integer_from_bytes;
 use util::signature::Signature;
 use util::term::Term;
-use data_encoding::HEXUPPER;
 
 type Msg = [u8; 32];
 
@@ -40,23 +39,20 @@ type Msg = [u8; 32];
 
 #[allow(non_snake_case)]
 pub fn schnorr_sign(msg: &Msg, sec_key: &ScalarN) -> Signature {
-    println!("schnorr_sign(msg, sec_key) with ({},{})", &HEXUPPER.encode(msg), &HEXUPPER.encode(&sec_key.to_32_bytes()));
-    let sec_key_bytes = sec_key.to_32_bytes();
+    //println!("schnorr_sign(msg, sec_key) with ({},{})", &HEXUPPER.encode(msg), &HEXUPPER.encode(&sec_key.to_32_bytes()));
     let P_jacobian = generator_mul(&sec_key).unwrap();
     let P = Point::from(P_jacobian);
 
-    println!("schnorr_sign  P.y.is_square()? {}",  P.y.is_square());
     let sec_key_sq = if P.y.is_square() {
         sec_key.clone()
     } else {
         CONTEXT.n.clone().sub(sec_key)
     };
 
-    let mut k0 = concat_and_hash_BIPSchnorrDerive(&sec_key_sq.to_32_bytes(), msg, &vec![]);
+    let k0 = concat_and_hash_BIPSchnorrDerive(&sec_key_sq.to_32_bytes(), msg, &vec![]);
     let R_jacobian = generator_mul(&k0).unwrap();
 
     let R = Point::from(R_jacobian);
-    println!("schnorr_sign  R.y.is_square()? {}",  R.y.is_square());
     let k = if R.y.is_square() {
         k0
     } else {
@@ -75,7 +71,7 @@ pub fn schnorr_sign(msg: &Msg, sec_key: &ScalarN) -> Signature {
 #[allow(non_snake_case)]
 pub fn schnorr_verify(msg: &Msg, pub_key: &NormalizedPoint, signature: &Signature) -> bool {
     let pub_key: Point = pub_key.into();
-    println!("schnorr_verify(msg, pub_key, signature) with ({},{},{})", &HEXUPPER.encode(&msg[..]), &HEXUPPER.encode(&pub_key.as_bytes()), &HEXUPPER.encode(&signature.as_bytes()));
+    //println!("schnorr_verify(msg, pub_key, signature) with ({},{},{})", &HEXUPPER.encode(&msg[..]), &HEXUPPER.encode(&pub_key.as_bytes()), &HEXUPPER.encode(&signature.as_bytes()));
 
     if !pub_key.on_curve() {
         return false;

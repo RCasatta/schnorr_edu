@@ -9,10 +9,12 @@ use util::rug::integer_from_bytes;
 pub mod scalar_n;
 pub mod scalar_p;
 
+#[allow(non_snake_case)]
 pub fn sha256_BIPSchnorr(input: &[u8]) -> Integer {
     tagged_sha256(b"BIPSchnorr", input)
 }
 
+#[allow(non_snake_case)]
 pub fn sha256_BIPSchnorrDerive(input: &[u8]) -> Integer {
     tagged_sha256(b"BIPSchnorrDerive", input)
 }
@@ -40,6 +42,7 @@ pub fn sha256_int(input: &[u8]) -> Integer {
     integer_from_bytes(&sha256(input))
 }
 
+#[allow(non_snake_case)]
 pub fn concat_and_hash_BIPSchnorr(a: &[u8], b: &[u8], c: &[u8]) -> ScalarN {
     let mut vec = Vec::with_capacity(a.len() + b.len() + c.len());
     vec.extend(a);
@@ -48,7 +51,7 @@ pub fn concat_and_hash_BIPSchnorr(a: &[u8], b: &[u8], c: &[u8]) -> ScalarN {
     ScalarN::new(sha256_BIPSchnorr(&vec))
 }
 
-
+#[allow(non_snake_case)]
 pub fn concat_and_hash_BIPSchnorrDerive(a: &[u8], b: &[u8], c: &[u8]) -> ScalarN {
     let mut vec = Vec::with_capacity(a.len() + b.len() + c.len());
     vec.extend(a);
