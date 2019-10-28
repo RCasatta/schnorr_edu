@@ -21,7 +21,7 @@ pub fn tagged_sha256(tag :&[u8], input: &[u8]) -> Integer {
     let mut hashed = [0u8; 32];
     let mut hasher = Sha256::new();
     let tag_hash = sha256(tag);
-    println!("tag_hash {}", &HEXLOWER.encode(&tag_hash));
+    //println!("tag_hash {}", &HEXLOWER.encode(&tag_hash));
     hasher.input(&tag_hash);
     hasher.input(&tag_hash);
     hasher.input(input);

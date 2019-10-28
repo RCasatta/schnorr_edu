@@ -40,29 +40,32 @@ type Msg = [u8; 32];
 
 #[allow(non_snake_case)]
 pub fn schnorr_sign(msg: &Msg, sec_key: &ScalarN) -> Signature {
+    println!("schnorr_sign(msg, sec_key) with ({},{})", &HEXUPPER.encode(msg), &HEXUPPER.encode(&sec_key.to_32_bytes()));
     let sec_key_bytes = sec_key.to_32_bytes();
     let P_jacobian = generator_mul(&sec_key).unwrap();
     let P = Point::from(P_jacobian);
 
+    println!("schnorr_sign  P.y.is_square()? {}",  P.y.is_square());
     let sec_key_sq = if P.y.is_square() {
         sec_key.clone()
     } else {
-        CONTEXT.n.clone() - sec_key
+        CONTEXT.n.clone().sub(sec_key)
     };
 
     let mut k0 = concat_and_hash_BIPSchnorrDerive(&sec_key_sq.to_32_bytes(), msg, &vec![]);
     let R_jacobian = generator_mul(&k0).unwrap();
 
     let R = Point::from(R_jacobian);
+    println!("schnorr_sign  R.y.is_square()? {}",  R.y.is_square());
     let k = if R.y.is_square() {
         k0
     } else {
         CONTEXT.n.clone().sub(&k0)
     };
-    println!("sign k={}", k);
+    //println!("sign k={}", k);
 
     let e = concat_and_hash_BIPSchnorr(&R.as_bytes(), &P.as_bytes(), msg);
-    println!("sign e={}", e);
+    //println!("sign e={}", e);
 
     let s = k.add(e.mul(&sec_key_sq));
 
@@ -71,9 +74,8 @@ pub fn schnorr_sign(msg: &Msg, sec_key: &ScalarN) -> Signature {
 
 #[allow(non_snake_case)]
 pub fn schnorr_verify(msg: &Msg, pub_key: &Point, signature: &Signature) -> bool {
-    println!("msg {:?}", msg);
-    println!("pub_key {}", &HEXUPPER.encode(&pub_key.as_bytes()));
-    println!("signature {}", &HEXUPPER.encode(&signature.as_bytes()));
+    println!("schnorr_verify(msg, pub_key, signature) with ({},{},{})", &HEXUPPER.encode(&msg[..]), &HEXUPPER.encode(&pub_key.as_bytes()), &HEXUPPER.encode(&signature.as_bytes()));
+
     if !pub_key.on_curve() {
         return false;
     }
@@ -85,7 +87,7 @@ pub fn schnorr_verify(msg: &Msg, pub_key: &Point, signature: &Signature) -> bool
         return false;
     }
     let e = concat_and_hash_BIPSchnorr(&signature_bytes[..32], &pub_key.as_bytes()[..], msg);
-    println!("e {}", e);
+    //println!("e {}", e);
 
     let a = generator_mul(&signature.s).unwrap();
     let b = JacobianPoint::from(pub_key.to_owned()).mul(&CONTEXT.n.clone().sub(&e));
@@ -97,15 +99,15 @@ pub fn schnorr_verify(msg: &Msg, pub_key: &Point, signature: &Signature) -> bool
     }
     let R = R.unwrap();
 
-    if !R.is_square() {
+    let R = Point::from(R);
+    if !R.y.is_square() {
         println!("4");
         return false;
     }
 
-
     // x(P) ≠ r can be implemented as x ≠ z^2r mod p.
-    let Rx = R.z.clone().mul(&R.z).mul(&signature.Rx);
-    if R.x != Rx {
+    //let Rx = R.z.clone().mul(&R.z).mul(&signature.Rx);
+    if R.x != signature.Rx {
         println!("5");
         return false;
     }
@@ -222,7 +224,7 @@ mod tests {
         assert_eq!(sign1, sign2);
     }
 
-    /*
+
     #[test]
     fn test_sign_and_verify() {
         let mut rng = thread_rng();
@@ -233,11 +235,13 @@ mod tests {
         let mut msg = [0u8; 32];
 
         for i in 0..10 {
+            println!("{}", i);
             rng.fill_bytes(&mut msg);
             let sec_key = rng.gen::<ScalarN>();
             let pub_key: Point = generator_mul(&sec_key).unwrap().into();
             let signature = schnorr_sign(&msg, &sec_key);
-            let result = schnorr_verify(&msg, &pub_key, &signature);
+            let result = schnorr_verify(&msg, &Point::from_bytes(&pub_key.as_bytes()).unwrap(), &signature);
+            println!("result {}", result);
             assert!(result);
             /*
             if i == 0 {
@@ -262,7 +266,7 @@ mod tests {
         messages.push([0u8; 32]);
         assert!(!schnorr_batch_verify(&messages, &pub_keys, &signatures));
         */
-    }*/
+    }
 
     #[test]
     fn test_new_bip_verify() {
@@ -281,12 +285,10 @@ mod tests {
             let result = cols.next().unwrap();
             let comment = cols.next().unwrap();
 
-            if secret_key.is_empty() {
-                test_vector_verify(&public_key, &message, &signature, "TRUE" == result);
-            } else {
-                test_vector(&secret_key, &public_key, &message, &signature, "TRUE" == result)    ;
+            if !secret_key.is_empty() {
+                test_vector(&secret_key, &public_key, &message, &signature, "TRUE" == result);
             }
-
+            test_vector_verify(&public_key, &message, &signature, "TRUE" == result);
         }
 
     }
@@ -306,6 +308,8 @@ mod tests {
                     &signature_result.unwrap()
                 )
             );
+        } else {
+            println!("ERRRRRRR");
         }
     }
 

@@ -99,11 +99,6 @@ impl JacobianPoint {
         }
     }
 
-    pub fn is_square(&self) -> bool {
-        //TODO not efficient
-        let p: Point = self.clone().into();
-        p.y.is_square()
-    }
 }
 
 impl Add for JacobianPoint {
